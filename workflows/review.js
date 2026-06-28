@@ -55,6 +55,16 @@ const cycle = typeof A.cycle === "string" ? parseInt(A.cycle, 10) : A.cycle;
 const now = A.now;
 const runId = A.run_id || null;
 
+// Prior cycle's surviving-blocker count, passed by the dispatching command from
+// PROGRESS.md SURVIVING_BLOCKERS (this workflow records it in state_delta below).
+// Drives the count-must-fall regression guard. Absent/NaN → null (no prior; e.g.
+// cycle 1), which disables the guard for that run.
+let priorBlockers = null;
+{
+  const v = typeof A.prior_blockers === "string" ? parseInt(A.prior_blockers, 10) : A.prior_blockers;
+  if (typeof v === "number" && Number.isInteger(v) && v >= 0) priorBlockers = v;
+}
+
 // Scribe result schema — declared HERE, above the first applyScribe() call site
 // (the invalid-args guard just below, and the survival-vote apply later). The
 // applyScribe function declaration is hoisted, but SCRIBE_RESULT_SCHEMA is a
@@ -278,18 +288,35 @@ phase("Survival vote");
 
 const surviving = applySurvivalVote(allConcerns, refutationMap);
 const survivingBlockers = surviving.filter((c) => c.severity === "blocker" && !c.refuted);
-const verdict =
-  survivingBlockers.length > 0 ? (cycle >= cycleBudget ? "escalate" : "revise") : "clean";
+// Stamp a deterministic identity on each surviving blocker so "same blocker
+// across cycles" is a deterministic comparison in the record (design §02).
+survivingBlockers.forEach((c) => {
+  c.id_hash = blockerIdentity(c);
+});
+const verdict = computeVerdict({
+  survivingBlockerCount: survivingBlockers.length,
+  cycle,
+  cycleBudget,
+  priorBlockerCount: priorBlockers,
+});
+const escalationReason =
+  verdict !== "escalate"
+    ? null
+    : cycle >= cycleBudget
+    ? "cycle-budget-exhausted-with-open-blockers"
+    : "blocker-count-did-not-strictly-fall";
 
 log(
-  `Cycle ${cycle}: ${surviving.length} concerns, ${survivingBlockers.length} surviving blockers → verdict=${verdict}`
+  `Cycle ${cycle}: ${surviving.length} concerns, ${survivingBlockers.length} surviving blockers` +
+    (typeof priorBlockers === "number" ? ` (prior ${priorBlockers})` : "") +
+    ` → verdict=${verdict}${escalationReason ? " [" + escalationReason + "]" : ""}`
 );
 
 // ---------- Phase 4: apply via scribe ----------
 
 phase("Apply");
 
-const envelope = buildEnvelope({ feature, cycle, cycleBudget, now, reviews, surviving, verdict });
+const envelope = buildEnvelope({ feature, cycle, cycleBudget, now, reviews, surviving, verdict, escalationReason, survivingBlockerCount: survivingBlockers.length });
 const scribeResult = await applyScribe(envelope);
 
 return {
@@ -414,7 +441,40 @@ function applySurvivalVote(concerns, refutationMap) {
   });
 }
 
-function buildEnvelope({ feature, cycle, cycleBudget, now, reviews, surviving, verdict }) {
+// --- LAYER2-VOTE-HELPERS START — deterministic blocker identity + regression-guarded verdict ---
+// Extracted VERBATIM by scripts/workflow-vote-logic.test.sh — keep PURE: no
+// agent()/log()/args, deterministic, side-effect-free (so the real source is the
+// thing tested, never a copy).
+//
+// blockerIdentity(concern): a stable hash of the concern's identity so "same
+// blocker across cycles" is a deterministic comparison (design §02). Prefers the
+// mapped acceptance criterion when the reviewer supplied one, else the normalized
+// concern text. djb2 — no Date/Math.random (the runtime forbids both).
+function blockerIdentity(concern) {
+  const raw = (concern && (concern.criterion || concern.text)) || "";
+  const key = raw.toLowerCase().replace(/\s+/g, " ").trim();
+  let h = 5381;
+  for (let i = 0; i < key.length; i++) h = ((h * 33) ^ key.charCodeAt(i)) >>> 0;
+  return "blk-" + h.toString(16);
+}
+
+// computeVerdict: the bounded, regression-guarded loop decision (design §02 +
+// CLAUDE.md "the review loop is bounded and regression-guarded"). clean when no
+// blocker survives; escalate when the cycle budget is exhausted OR the
+// surviving-blocker count fails to STRICTLY fall vs the prior cycle (the
+// "converging on something worse" guard — escalate EARLY, do not burn the budget);
+// else revise. priorBlockerCount null (no prior, e.g. cycle 1) disables the guard.
+function computeVerdict(o) {
+  const cur = o.survivingBlockerCount;
+  if (cur <= 0) return "clean";
+  if (o.cycle >= o.cycleBudget) return "escalate";
+  if (typeof o.priorBlockerCount === "number" && o.priorBlockerCount >= 0 && cur >= o.priorBlockerCount)
+    return "escalate";
+  return "revise";
+}
+// --- LAYER2-VOTE-HELPERS END ---
+
+function buildEnvelope({ feature, cycle, cycleBudget, now, reviews, surviving, verdict, escalationReason, survivingBlockerCount }) {
   const reviewEntries = reviews.map((r) => {
     const own = surviving.filter((c) => c.raised_by === r.role);
     const lines = [`## Cycle ${cycle} — ${r.role} — ${now}`];
@@ -434,7 +494,7 @@ function buildEnvelope({ feature, cycle, cycleBudget, now, reviews, surviving, v
   const escalation_payload =
     verdict === "escalate"
       ? {
-          reason: "cycle-budget-exhausted-with-open-blockers",
+          reason: escalationReason || "cycle-budget-exhausted-with-open-blockers",
           cycle,
           cycle_budget: cycleBudget,
           surviving_blockers: surviving.filter(
@@ -456,6 +516,9 @@ function buildEnvelope({ feature, cycle, cycleBudget, now, reviews, surviving, v
     state_delta: {
       PHASE: verdict === "escalate" ? "ESCALATED" : "REVIEW",
       CYCLE: cycle,
+      // Recorded so the NEXT cycle's dispatch can pass prior_blockers and the
+      // count-must-fall guard can fire (the workflow has no filesystem to read it).
+      SURVIVING_BLOCKERS: typeof survivingBlockerCount === "number" ? survivingBlockerCount : 0,
       UPDATED: now,
     },
     next_legal_commands:

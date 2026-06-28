@@ -82,6 +82,7 @@ There is no non-workflow fallback for REVIEW. If the runtime is missing, refuse 
 9. **Invoke the Workflow tool.** Call `Workflow` with:
    - `scriptPath`: `${CLAUDE_PLUGIN_ROOT}/workflows/review.js`
    - `args`: `{ "feature": "<slug>", "cycle": <new_cycle>, "now": "<iso8601>", "run_id": "<run id from step 7>" }` — **plus** `"roles": [<resolved roster>]` and/or `"cycle_budget": <resolved int>` ONLY when they were resolved from a flag or a `REVIEW_*` PROGRESS.md field in step 5. **Omit a key entirely when unset** so the workflow applies its own default (omitting both reproduces the historical behavior exactly).
+   - **Also pass `"prior_blockers": <n>` when `PROGRESS.md` carries a `SURVIVING_BLOCKERS:` field** (the count the previous review cycle recorded). It drives the workflow's count-must-fall regression guard: if the surviving-blocker count does not strictly fall versus that prior value, the workflow escalates **early** rather than burning the remaining budget. **Omit on cycle 1** (no `SURVIVING_BLOCKERS` field yet) so the guard is disabled for the first cycle.
 
    Supply `now` yourself (the script cannot call `Date`); the workflow refuses to run without it. The Workflow tool is async-launched: it returns immediately with a `runId`, `taskId`, and `transcriptDir`.
 
