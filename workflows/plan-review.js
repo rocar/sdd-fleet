@@ -378,7 +378,7 @@ function buildEnvelope({ product, cycle, now, reports, allFindings, counts }) {
   );
 
   return {
-    build_fleet_version: "0.2",
+    sdd_fleet_version: "0.2",
     feature: product, // scribe uses this for SCRIBE_OK + any ESCALATION title; carries the product slug
     run_id: runId,
     workspace_dir: WORKSPACE,
@@ -403,7 +403,7 @@ function buildEnvelope({ product, cycle, now, reports, allFindings, counts }) {
 // their pre-run values (it only replaces keys present).
 function cleanupEnvelope(product, now, runId) {
   return {
-    build_fleet_version: "0.2",
+    sdd_fleet_version: "0.2",
     feature: product,
     run_id: runId,
     workspace_dir: WORKSPACE,

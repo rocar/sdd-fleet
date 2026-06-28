@@ -530,7 +530,7 @@ function buildEnvelope({ feature, cycle, now, partitions, partitionPlan, coderRe
       : null;
 
   return {
-    build_fleet_version: "0.2",
+    sdd_fleet_version: "0.2",
     feature,
     run_id: runId,
     workflow: "deep-build",
@@ -567,7 +567,7 @@ function buildEnvelope({ feature, cycle, now, partitions, partitionPlan, coderRe
 // reserved for genuine cycle exhaustion.
 function cleanupEnvelope(feature, now, runId) {
   return {
-    build_fleet_version: "0.2",
+    sdd_fleet_version: "0.2",
     feature,
     run_id: runId,
     workflow: "deep-build",

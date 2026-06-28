@@ -17,7 +17,7 @@ not carry (e.g. verbatim `[blocker]` text from REVIEW.md, ESCALATION.md
 contents). If the snapshot line is empty or an error (e.g. `jq` missing),
 fall back to reading the files directly per the steps below.
 
-Snapshot (`build-fleet/status-snapshot@1`):
+Snapshot (`sdd-fleet/status-snapshot@2`):
 !`bash "${CLAUDE_PLUGIN_ROOT}/scripts/status-snapshot.sh" 2>&1 || true`
 
 ## What you do
@@ -129,7 +129,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/status-snapshot.sh"
 ```
 
 It reads the same `.sdd/` state this command narrates and emits **exactly one JSON
-object** (`schema: build-fleet/status-snapshot@1`) on stdout — the product tier
+object** (`schema: sdd-fleet/status-snapshot@2`) on stdout — the product tier
 (vision/stack one-liners, backlog counts + per-feature rows, next unblocked feature)
 and the active item (feature or bug lane: phase, status, cycles, escalation).
 Read-only; run from the repo root. `product` is `null` with no product tier;

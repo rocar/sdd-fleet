@@ -428,7 +428,7 @@ function buildEnvelope({ slug, cycle, cycleBudget, now, refutals, judged, verdic
   // /sdd-fleet:feature-dev flips spec.md after review). `refuted` stays at DIAGNOSE for a
   // re-run; `escalate` is terminal.
   return {
-    build_fleet_version: "0.5",
+    sdd_fleet_version: "0.5",
     feature: slug,            // scribe targets .sdd/<feature>/ — here the bug slug
     run_id: runId,
     phase: "DIAGNOSE",
@@ -459,7 +459,7 @@ function buildEnvelope({ slug, cycle, cycleBudget, now, refutals, judged, verdic
 // genuine cycle exhaustion.
 function cleanupEnvelope(slug, now, runId) {
   return {
-    build_fleet_version: "0.5",
+    sdd_fleet_version: "0.5",
     feature: slug,
     run_id: runId,
     phase: "DIAGNOSE",

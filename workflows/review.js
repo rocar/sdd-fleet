@@ -445,7 +445,7 @@ function buildEnvelope({ feature, cycle, cycleBudget, now, reviews, surviving, v
       : null;
 
   return {
-    build_fleet_version: "0.2",
+    sdd_fleet_version: "0.2",
     feature,
     run_id: runId,
     phase: "REVIEW",
@@ -476,7 +476,7 @@ function buildEnvelope({ feature, cycle, cycleBudget, now, reviews, surviving, v
 // genuine cycle exhaustion.
 function cleanupEnvelope(feature, now, runId) {
   return {
-    build_fleet_version: "0.2",
+    sdd_fleet_version: "0.2",
     feature,
     run_id: runId,
     phase: "REVIEW",

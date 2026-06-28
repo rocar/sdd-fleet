@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/status-snapshot.sh — deterministic, LLM-free machine-readable snapshot of
 # a sdd-fleet project's .sdd/ state. Emits EXACTLY ONE JSON object on stdout
-# (schema build-fleet/status-snapshot@1) and writes nothing.
+# (schema sdd-fleet/status-snapshot@2) and writes nothing.
 #
 # Purpose: let an external orchestrator POLL project state cheaply — no subagent,
 # no model call, no token cost. /sdd-fleet:status is the human-readable view;
@@ -14,7 +14,7 @@
 # External pollers: ${CLAUDE_PLUGIN_ROOT} resolves only inside Claude Code —
 # call this script via a checkout/clone path instead, or vendor it PRESERVING
 # the relative layout (it sources ../hooks/scripts/_lib.sh and invokes its
-# sibling next-feature.sh). Stability: additive schema changes keep @1;
+# sibling next-feature.sh). Stability: additive schema changes keep @2;
 # breaking changes bump the @N and get a CHANGELOG Compatibility line — pin on
 # the schema value you understand (README "Orchestrator integration / polling").
 #
@@ -25,7 +25,7 @@
 #
 # Contract (null product => no product tier; null active => nothing in flight):
 #   {
-#     "schema":"build-fleet/status-snapshot@1",
+#     "schema":"sdd-fleet/status-snapshot@2",
 #     "generated_at":"2026-06-06T12:34:56Z",
 #     "has_product":true,
 #     "product":{
@@ -53,7 +53,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 require_jq   # the snapshot is JSON; without jq we cannot emit/escape it safely.
 
-SCHEMA="build-fleet/status-snapshot@1"
+SCHEMA="sdd-fleet/status-snapshot@2"
 NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 BACKLOG=".sdd/_product/backlog.md"
 

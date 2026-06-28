@@ -39,7 +39,7 @@ valid_json "bare-json" "$o"
 eq "bare-has_product" "$(q "$o" '.has_product')" "false"
 eq "bare-product"     "$(q "$o" '.product')"     "null"
 eq "bare-active"      "$(q "$o" '.active')"       "null"
-eq "bare-schema"      "$(q "$o" '.schema')"       "build-fleet/status-snapshot@1"
+eq "bare-schema"      "$(q "$o" '.schema')"       "sdd-fleet/status-snapshot@2"
 
 # ---- 2. product tier, no active feature ------------------------------------
 p="$work/prod"; mkdir -p "$p/.sdd/_product"
