@@ -19,7 +19,9 @@
         "orchestration",
         "product-planning",
         "bug-fix",
-        "troubleshooting"
+        "troubleshooting",
+        "multi-repo",
+        "contract-governance"
       ]
     }
   ]

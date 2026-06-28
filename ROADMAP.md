@@ -60,7 +60,7 @@ Output gates M1–M4.
 ### v0.2 explicitly does NOT include
 
 - Mid-workflow human intervention via external channels (Discord/Slack/email). Workflows can't pause for input mid-run by design. Intervention happens at phase boundaries.
-- Discord/Hermes integration adapters inside the plugin. Build-fleet stays orchestrator-agnostic.
+- Discord/Hermes integration adapters inside the plugin. sdd-fleet stays orchestrator-agnostic.
 - Marketplace registration.
 
 ---
@@ -78,7 +78,7 @@ Output gates M1–M4.
 
 **Half A — plugin side (shipped, orchestrator-agnostic).** `scripts/status-snapshot.sh`:
 a deterministic, LLM-free emitter of one JSON object (`schema:
-build-fleet/status-snapshot@1`) describing a project's `.sdd/` state — product tier
+sdd-fleet/status-snapshot@2`) describing a project's `.sdd/` state — product tier
 (vision/stack one-liners, backlog counts + per-feature rows, next unblocked feature)
 and the active item (feature or bug lane: phase, status, cycles, escalation). Backlog
 **resolution + counts reuse `next-feature.sh`** (the v0.4 resolver — single source of
@@ -363,4 +363,4 @@ documented, per the 2026-06-09 audit's own staging advice.
 - **Escalation is a first-class outcome, not a failure.** Human review at boundaries is the correctness mechanism, not an exception path.
 - **Filesystem is shared memory.** Subagent memories silo; the workspace `.sdd/<feature>/` does not.
 - **Plugin is read-only machinery; `.sdd/` is per-project state.** Never let machinery and state interleave. The plugin tree is re-installable; `.sdd/` is the truth.
-- **Orchestrator-agnostic.** Build-fleet works from CLI, headless `claude -p`, Hermes, or any future orchestrator. No orchestrator-specific code lives in the plugin.
+- **Orchestrator-agnostic.** sdd-fleet works from CLI, headless `claude -p`, Hermes, or any future orchestrator. No orchestrator-specific code lives in the plugin.

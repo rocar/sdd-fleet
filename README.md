@@ -164,9 +164,22 @@ either `.sdd/<feature>/` or `.sdd/_product/` via a `workspace_dir` field).
 `diagnose.js` (bug-lane root-cause confirmation — the survival vote, inverted).
 Plus deterministic shared scripts under `scripts/` (the backlog resolver, the
 intent-block extractor, the product-memory splice, the status snapshot, the
-atomic ACTIVE-lock acquirer, plus the workflow determinism-lint and pinner that
-govern the generate-then-pin lane — each with its own test harness), seven craft
-skills, ten gate-enforcing hooks, and the shared memory layer under `.sdd/`.
+atomic ACTIVE-lock acquirer, the workflow determinism-lint and pinner that govern
+the generate-then-pin lane, and the cross-repo contract-governance toolchain —
+service-descriptor, catalog-derive, semver-check, blast-radius and its signature,
+the dependency / CDC checks, and the epic ratify / materialise + conductor
+helpers — each with its own test harness), seven craft skills, seventeen
+gate-enforcing hooks, and the shared memory layer under `.sdd/`.
+
+**A Layer-3 workspace tier.** Above the per-repo machine, a *workspace* (a
+superproject with member repos as git submodules and one vault over them) plans
+cross-repo work as an **epic** — a dependency DAG of stories plus the contract
+design that wires the services together — has a human **ratify** it, and lets a
+modelless **conductor** dispatch ready stories across the estate. Cross-repo
+**contract governance** (service descriptors, an append-only contract registry, a
+derived service catalog, deterministic semver + blast-radius gates) keeps the
+estate's contracts honest. See [The workspace tier](#the-workspace-tier) and
+[Cross-repo contract governance](#cross-repo-contract-governance).
 
 ---
 
@@ -371,6 +384,94 @@ on cause-known-vs-unknown and bounces the known-cause case back out.
 
 ---
 
+## The workspace tier
+
+Everything above is *one repo*. The **workspace tier** is the estate layer above
+it: a parent **superproject** with member repos as git **submodules** and one
+Obsidian vault over the whole thing. It plans cross-repo work as an **epic**, has
+a human ratify it, and lets a modelless **conductor** dispatch the ready stories
+across the estate. A plain repo with no workspace above it is unaffected — this
+tier is **purely additive**.
+
+**Two `.sdd/` levels, never flattened.** Each fact lives at exactly one level:
+
+- **Estate** — `workspace/.sdd/_epic/<slug>/`: the epic's `plan.md` (the
+  dependency DAG — nodes are stories tagged with their target repo, edges are
+  story→contract publish/consume), `contracts.md` (the contract *design*), estate
+  `DECISIONS.md`, and the human-only `RATIFICATION.md` / `ESCALATION.md`.
+- **Repo** — each submodule's own `.sdd/<story>/` (spec, acceptance, ADRs, review,
+  PROGRESS), **unchanged** by this tier.
+
+The estate plans *what crosses services*; each repo owns *how it builds its own
+story*. Contract **design** is the vault's; the **published** contract is the
+[registry](#cross-repo-contract-governance)'s — never the same store.
+
+**The EPIC spine — plan → ratify → dispatch.** Deliberately thin, with **no estate
+review engine** (the estate's value is having *no model in dispatch*):
+
+1. **`/sdd-fleet:epic-plan <slug>`** (model + human) — architect authors the vault
+   (`plan.md` + `contracts.md`). Vault-only, like `new-product`.
+2. **`/sdd-fleet:epic-ratify <slug>`** (human gate, `disable-model-invocation`) —
+   never auto-passes; the bare call is a dry-run. `ratify` writes
+   `RATIFICATION.md`, which pins a **digest** of the plan it ratified, then
+   materialises the epic + one Jira story per node as deterministic code. A later
+   edit to the plan is *detectable* (ratified digest ≠ current) rather than
+   silently still-ratified.
+3. **The conductor** (modelless, scripts only) — a level-triggered reconciler.
+   Each tick reads the Jira story set + the registry's published contracts
+   **fresh**, recomputes the ready frontier as pure set logic (a story is ready
+   iff every contract it consumes is published *now*), and dispatches ready stories
+   (`NOT_STARTED → DISPATCHED`). It never invents a story, never reads the plan,
+   holds no private state, and takes a per-epic noclobber lease — ground truth
+   always beats its own recollection.
+
+**Derived status, never a stored phase.** An epic has no hand-bumped `PHASE:` — its
+phase is a pure function of artifacts that exist for other reasons (RATIFICATION.md
+present? any story escalated? all stories done per Jira?), the same
+ground-truth-over-recollection rule as the derived service catalog. The full
+mechanics live in the `sdd-protocol` skill (`references/workspace-tier.md`).
+
+---
+
+## Cross-repo contract governance
+
+Once services depend on each other, the fleet has to reason about contracts
+*across* repos. Every consequence here is **code** — semver, pinned-consumer
+lookup, blast-radius, and edge reconciliation are deterministic; the model gets
+exactly one isolated call (semver soundness), and even that is a logged seam.
+
+- **`service.json`** (repo root, human-owned) — declares the service's `id`,
+  `team`, `lifecycle`, `data_classes` (`money_movement` / `pii` drive the human
+  gate), and its `produces` / `consumes` edges (`<contract>@<major>`). A consume
+  edge is declared **only** here. Gated on write by `validate-service-descriptor`.
+- **The registry** (`registry/<contract>/<semver>.json`, append-only) — the
+  *published* contracts and registered consumer expectations. A contract is
+  "published" iff a version file exists.
+- **The catalog** (`scripts/catalog-derive.sh`) — a **derived** dependency graph
+  (services, reverse edges, published set), recomputed from the descriptors + the
+  registry, **never hand-kept**.
+- **Blast radius** (`scripts/blast-radius.sh`) — walks the catalog's reverse edges
+  transitively and flags `human_gate_required` when a change reaches **≥ N**
+  consumers (default 3) **or** any reached service — or the changed service itself
+  — carries `money_movement` / `pii`. Principled and computed, never a hardcoded
+  "touches auth".
+
+**Four fail-closed gates** enforce it. Two fire on the `PROGRESS.md → HANDOFF`
+transition (the ship chokepoint): `dependency-gate` blocks an undeclared
+cross-service edge, and `handoff-blast-radius-gate` forces a **human gate** on a
+risky change — permitted only when `/sdd-fleet:handoff-approve` has recorded an
+approval whose `BLAST_RADIUS_SIGNATURE` matches the *current* radius (a widened
+radius goes stale and re-blocks). Two fire on a registry publish:
+`block-publish-before-handoff` (a contract can't publish before HANDOFF, so the
+human gate can't be skipped by publishing early) and `cdc-gate` (a publish must
+satisfy every registered consumer expectation). The gate's stated limits
+(consumer-axis fail-open when the estate can't be resolved; the
+transition-chokepoint trust boundary shared by every `.sdd` gate; approval is
+staleness-bound, not anti-forge) are documented in
+`skills/sdd-protocol/references/service-catalog.md`.
+
+---
+
 ## Three-tier routing
 
 When you run `/sdd-fleet:jira-story`, the **classifier** sizes the work and
@@ -510,6 +611,13 @@ execution.
 
 ## Command reference
 
+**Workspace / estate tier:**
+
+| Command | Phase | What it does |
+|---|---|---|
+| `/sdd-fleet:epic-plan <epic-slug>` | PLAN | Scaffolds `workspace/.sdd/_epic/<slug>/`; architect authors `plan.md` (the cross-repo dependency DAG) + `contracts.md` (the contract design). Vault-only — no Jira, no registry, no gate. |
+| `/sdd-fleet:epic-ratify <epic-slug> [ratify]` | PLAN → RATIFIED | **Human-only** (not model-invocable). Bare = dry-run (prints the plan + contract design, halts). `ratify` writes `RATIFICATION.md` (pinning a plan+contracts digest), then deterministically materialises the epic + one Jira story per plan node. `ratify force` records consciously-accepted concerns. |
+
 **Product tier:**
 
 | Command | Phase | What it does |
@@ -531,6 +639,7 @@ execution.
 | `/sdd-fleet:feature-dev` | BUILD | Orchestrates BUILD: qa drafts the failing suite first, then coder implements (routes to the deep-build workflow when `BUILD_MODE=deep-build`). |
 | `/sdd-fleet:feature-dev` | BUILD | Directly dispatches the fan-out build workflow (normally invoked for you by `/sdd-fleet:feature-dev`); also the iteration entry point. Accepts `--cycle-budget` (else `BUILD_CYCLE_BUDGET`). |
 | `/sdd-fleet:pr-review` | CHANGE_REVIEW → HANDOFF | architect + PO + qa review the diff; refuses if tests are missing/failing. On pass devops ships, the backlog flips, and the loop advances. |
+| `/sdd-fleet:handoff-approve [approve]` | HANDOFF (gate) | **Human-only** (not model-invocable). Approves a blast-radius-risky HANDOFF. Bare = dry-run preview of the radius; `approve` records `HANDOFF_APPROVAL.md` pinned to the current blast-radius signature (a widened radius invalidates it → re-approve). |
 | `/sdd-fleet:status` | — | Prints active feature state, open concerns, cycle counts, the product backlog, and the next unblocked feature. **Bug-lane aware:** `LANE: bug` → phase / `SEV` / `diagnosis.md` STATUS / cycles. |
 | `/sdd-fleet:park <reason>` | any → PARKED | **Human-only** (not model-invocable). Records the parked state in PROGRESS.md and frees `.sdd/ACTIVE` — the sanctioned sev0-preemption path. Workspace stays intact. |
 | `/sdd-fleet:resolve-escalation [<slug>] <decision>` | ESCALATED → pre-escalation phase | **Human-only** (not model-invocable). Archives ESCALATION.md into REVIEW.md (append-only), resets the exhausted cycle counter, restores the phase. |
@@ -591,7 +700,7 @@ without an explicit `ratify` token.
 An external orchestrator (cron, Hermes adapter, CI job) should **poll** project
 state with `scripts/status-snapshot.sh` — deterministic, LLM-free, read-only, no
 token cost. Run it from the **target project's repo root**; it emits exactly one
-JSON object on stdout with schema `build-fleet/status-snapshot@1`:
+JSON object on stdout with schema `sdd-fleet/status-snapshot@2`:
 `{schema, generated_at, has_product, product:{phase, vision, stack, backlog
 {done,total,phases,features[]}, next} | null, active:{slug, lane, phase, status,
 cycle/change_cycle or sev/fix_cycle, escalated} | null}` — the script's header
@@ -614,13 +723,13 @@ on a schedule, diff against the previous snapshot, publish deltas wherever your
 fleet keeps project state.
 
 **Signal stability policy.** The machine surface is versioned: the snapshot
-schema carries its version inline (`build-fleet/status-snapshot@1`) and the
+schema carries its version inline (`sdd-fleet/status-snapshot@2`) and the
 `SDD_FLEET_*` signal-line grammar (`SDD_FLEET_<NAME>: {json}` on stdout,
 before any prose) is at version 1. **Additive** changes — new signal names, new
 optional JSON fields — keep the version; **breaking** changes — renamed/removed
 fields or signals, changed semantics — bump it and get a Compatibility line in
 `CHANGELOG.md`. Orchestrators should pin on the `@N` they understand: assert
-`.schema == "build-fleet/status-snapshot@1"` and treat an unknown version as
+`.schema == "sdd-fleet/status-snapshot@2"` and treat an unknown version as
 "update the adapter," not as parseable data.
 
 One more operational assumption worth restating here: **one orchestrator session
@@ -731,6 +840,13 @@ session per working tree; parallel clones are not serialized against each other.
 | `check-review-written` | Rejects a reviewer that stops without logging to `REVIEW.md`. |
 | `stop-tests` | During BUILD / CHANGE_REVIEW / HANDOFF, blocks stop on a failing suite (tolerates "no tests collected" pre-suite). Bounded: after 3 consecutive red blocks it writes `ESCALATION.md` and lets the stop through instead of wedging the session; `.sdd/<slug>/.skip-stop-tests` is the operator override. |
 | `reap-stale-workflow-markers` | Removes released (empty) `.workflow-in-flight` markers immediately and orphaned ones past the staleness threshold (15 min). |
+| `link-discipline` | On a `.sdd/**/*.md` write: blocks `[[wikilinks]]` at every tier, and (in a repo-level `.sdd/`) a relative link that resolves outside the repo root. The workspace/superproject tier skips the repo-root check so the vault's down-links into submodules stay legal. |
+| `validate-service-descriptor` | Rejects a `service.json` write that fails the descriptor schema (`id` / `team` / `lifecycle` / `data_classes` / `produces` / `consumes`). |
+| `epic-ratified-before-fanout` | Blocks spec'ing a story whose governing epic is not ratified — resolves the superproject and reads the epic's `RATIFICATION.md` (digest-checked against the current plan). Inert for standalone repos. |
+| `dependency-gate` | At the `PROGRESS.md → HANDOFF` transition, blocks an undeclared cross-service edge: a diff line matching a registry contract's `client_signature` whose contract isn't in `consumes[]`, or a `consumes[]` token with no published version. Inert for standalone / non-git repos. |
+| `handoff-blast-radius-gate` | Forces a human gate at the HANDOFF transition when a change's blast radius is risky (≥ N transitive consumers, or `money_movement` / `pii` on a reached consumer or the changed service itself). Allowed only when `HANDOFF_APPROVAL.md` carries a `BLAST_RADIUS_SIGNATURE` matching the *current* radius — a widened radius goes stale and re-blocks. |
+| `block-publish-before-handoff` | Blocks a `registry/<contract>/<semver>.json` publish unless the active feature is at HANDOFF, so a contract can't reach the registry before the blast-radius gate has fired. |
+| `cdc-gate` | Blocks a contract publish that violates any registered consumer expectation (same major, `required_operations ⊆ operations`, `required_fields ⊆ fields`). |
 
 Hooks block with exit code 2 and return actionable feedback. They are the
 deterministic backbone — agents can't talk their way past a gate, and the gates

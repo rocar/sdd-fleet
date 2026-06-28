@@ -1,7 +1,7 @@
 {
   "name": "sdd-fleet",
-  "version": "0.8.0",
-  "description": "Spec-driven multi-agent software house: architect, coder, qa, devops, scribe, and classifier subagents executing a hook-gated SPEC → REVIEW → FINALIZE → BUILD → CHANGE_REVIEW → HANDOFF state machine, with a human-ratified product planning tier and a reproducing-test-gated bug lane. Deterministic gates, bounded review cycles, first-class human escalation, configurable per-item review rosters and cycle budgets, a governed generate-then-pin lane for authoring novel workflows, and headless orchestrator support.",
+  "version": "1.0.0",
+  "description": "Spec-driven multi-agent software house for multi-repo estates: architect, coder, qa, devops, scribe, and classifier subagents executing a hook-gated SPEC → REVIEW → FINALIZE → BUILD → CHANGE_REVIEW → HANDOFF state machine, with a human-ratified product planning tier and a reproducing-test-gated bug lane. A Layer-3 workspace tier plans epics and contract designs across submodules and dispatches them via a modelless conductor; cross-repo contract governance adds service descriptors, an append-only contract registry, a derived service catalog, and deterministic semver + blast-radius gates that force a human gate on risky changes. Deterministic gates, bounded review cycles, first-class human escalation, configurable per-item review rosters and cycle budgets, a governed generate-then-pin lane for authoring novel workflows, and headless orchestrator support.",
   "author": {
     "name": "Ray Car",
     "email": "raycar@gmail.com"
@@ -17,7 +17,9 @@
     "orchestration",
     "product-planning",
     "bug-fix",
-    "troubleshooting"
+    "troubleshooting",
+    "multi-repo",
+    "contract-governance"
   ],
   "license": "MIT"
 }
