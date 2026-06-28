@@ -29,6 +29,11 @@ only (never across clones).
   fail-closed structural check in the adapter) proves a story issue carries the id + a vault
   pointer and **never** the plan/contract body — now verified against the real request body and
   the full `epic-materialise → adapter` dry-run chain, not just the fixture argv.
+- **One-time legacy-link sweep (`scripts/link-sweep.sh`).** The `link-discipline` gate is
+  PreToolUse-only, so a `[[wikilink]]` or escaping `../` link already on disk is invisible until
+  its region is next written. This non-gate batch tool feeds every existing `.sdd/**/*.md` through
+  the **real hook** (single-source — zero rule drift; report-only) and lists what the gate would
+  block; run it once **per repo** when adopting an estate (exit 1 if any found, 0 when clean).
 
 ### Changed
 

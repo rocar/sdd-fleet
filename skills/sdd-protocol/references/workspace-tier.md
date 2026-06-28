@@ -260,6 +260,16 @@ and never curates memory). Promoted lessons are plain markdown with **stable-ID 
 only** (contract name, Jira key, registry URL) — no `[[wikilinks]]`, no `../` paths, both
 of which resolve in the vault but break in a member repo's view.
 
+**Link discipline is gated on write, swept once at conversion.** The `link-discipline`
+PreToolUse hook enforces the above on every `.sdd/**/*.md` *write*, but it cannot see a
+`[[wikilink]]` or escaping `../` link already on disk until that region is next written. So
+when an estate is adopted, run the **one-time, non-gate** `scripts/link-sweep.sh` **once per
+repo** (it feeds every existing `.sdd/` file through the real hook and reports what the gate
+would block — single-source, report-only): clean what it lists (wikilink → standard markdown
+link; escaping `../` → a stable ID) and re-run until it exits clean. The sweep is single-repo
+because the tier (workspace / member / standalone) is per-repo; sweep the workspace and each
+submodule separately.
+
 ## Hook interactions and anchoring
 
 - **`epic-ratified-before-fanout` (fail-closed).** Refuses to spec a story whose epic is
