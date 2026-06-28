@@ -15,6 +15,13 @@
 # INERT (exit 0): no file path; a write outside .sdd/; a non-.md write; a workspace-tier
 # write w.r.t. rule 2. Fail CLOSED (exit 2): a '..' write-target, jq missing, an unparseable
 # payload, or any unexpected error (the ERR trap). Reads topology only; writes nothing.
+#
+# STATED LIMIT (harness-wide, by design — NOT a bug to fix here): a write that SKIPS this
+# PreToolUse chokepoint evades this gate exactly as it evades every other .sdd path gate
+# (dependency, blast-radius) — a Bash write into .sdd/, or a pre-existing link in a region this
+# edit does not touch. The one-time scripts/link-sweep.sh cleans the pre-existing on-disk case;
+# the live case is the accepted chokepoint boundary (fail-closed on what passes, fail-open on
+# what does not). See skills/sdd-protocol/references/service-catalog.md (Stated limits).
 set -euo pipefail
 trap 'echo "sdd-fleet: link-discipline errored — failing closed" >&2; exit 2' ERR
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

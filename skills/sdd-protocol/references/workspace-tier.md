@@ -268,7 +268,11 @@ repo** (it feeds every existing `.sdd/` file through the real hook and reports w
 would block — single-source, report-only): clean what it lists (wikilink → standard markdown
 link; escaping `../` → a stable ID) and re-run until it exits clean. The sweep is single-repo
 because the tier (workspace / member / standalone) is per-repo; sweep the workspace and each
-submodule separately.
+submodule separately. These are **two distinct limits**: the sweep closes the *pre-existing
+on-disk* gap, but the *live chokepoint-evasion* gap remains **by design** — a write that skips
+`Write|Edit` (a Bash write into `.sdd/`) evades `link-discipline` exactly as it evades every other
+`.sdd` path gate (dependency, blast-radius). Fail-closed on what passes the chokepoint, fail-open
+on what does not — see `references/service-catalog.md` (*Stated limits*).
 
 ## Hook interactions and anchoring
 

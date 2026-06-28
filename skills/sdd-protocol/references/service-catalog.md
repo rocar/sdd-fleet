@@ -125,9 +125,14 @@ git unavailable, or a `catalog-derive` failure skips the consumer-count + reache
 axes (the producer self-check still fires), mirroring the dependency gate's standalone/no-base
 posture. (2) *Transition-chokepoint evasion* — like the dependency gate, this is a content-pattern
 PreToolUse gate on the `PHASE: HANDOFF` write; a raw Bash write into `.sdd/<slug>/PROGRESS.md`, or a
-narrow Edit replacing only the phase token, evades it. That is a harness-wide trust-boundary limit
-(every `.sdd` PreToolUse gate shares it; the scribe has no Bash, and the protocol edits the full
-PHASE line via Write/Edit) — not closed by slice 6b. (3) *Approval is staleness-bound, not
+narrow Edit replacing only the phase token, evades it. That is a **harness-wide** trust-boundary
+limit that **every `.sdd` PreToolUse path gate shares — `dependency-gate`, `handoff-blast-radius-gate`,
+and `link-discipline` alike**: each is fail-closed on what passes the `Write|Edit` chokepoint and
+fail-open on a write that skips it (a Bash write into `.sdd/`, or a write whose tool/content the
+matcher never sees). It is bounded by posture, not closed — the scribe has no Bash, the protocol
+edits the full `PHASE` line via Write/Edit, and a one-time `link-sweep.sh` (see `workspace-tier.md`)
+cleans pre-existing link violations the gate could not see at write time. By design (not closed by
+slice 6b) — not a bug to fix at the gate layer. (3) *Approval is staleness-bound, not
 anti-forge* — `/sdd-fleet:handoff-approve` is the **sanctioned** path (`disable-model-invocation`)
 and the signature makes an approval go **stale** when the radius changes, but it is **not**
 cryptographically anti-forge: a model could write `HANDOFF_APPROVAL.md` with a correct *current*
