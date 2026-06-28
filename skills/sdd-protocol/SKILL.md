@@ -240,12 +240,18 @@ phases:
    `AgentDefinition.tools` omits `Write`/`Edit`; `AgentDefinition.skills` preloads
    `review-rubric`.
 2. **Cross-examination** — each reviewer must refute or affirm peers' concerns. A
-   refutation must be ≥40 characters, cite spec.md or acceptance.md as structured
-   counter-evidence, and come from a different-role reviewer (self-refutation is
-   filtered).
-3. **Survival vote** — pure script logic. A concern survives unless refuted by a
-   different-role reviewer with substantive reasoning. The cycle is *clean* iff
-   zero surviving `[blocker]` items.
+   refutation must cite spec.md or acceptance.md as structured counter-evidence and
+   come from a different-role reviewer (self-refutation is filtered). There is no
+   character-count floor: whether the reasoning is *sound* is judged in the vote.
+3. **Survival vote** — a structural prefilter (different-role + citation present,
+   pure script) feeds **one neutral, stake-free adjudicator** — the single model
+   call in the vote — which rules per concern whether the refutation is *sound* and
+   whether the citation *resolves*. A concern dies only on `sound && citation_resolves`
+   (fail-safe: it survives otherwise). The cycle is *clean* iff zero surviving
+   `[blocker]` items. The loop is bounded (≤ cycle budget) **and** regression-guarded:
+   each surviving blocker carries a deterministic identity hash, and if the
+   surviving-blocker count does not strictly fall versus the prior cycle the run
+   escalates early rather than converging on something worse.
 4. **Apply via scribe** — the scribe applies the structured envelope to PROGRESS.md
    (`state_delta`) and REVIEW.md (`review_entries`), writes ESCALATION.md when
    `escalation_payload` is non-null, and releases `.workflow-in-flight`.

@@ -52,6 +52,42 @@ check("verdict-count-flat",   computeVerdict({ survivingBlockerCount: 2, cycle: 
 check("verdict-count-rose",   computeVerdict({ survivingBlockerCount: 3, cycle: 2, cycleBudget: 3, priorBlockerCount: 1 }) === "escalate");
 check("verdict-no-prior-ok",  computeVerdict({ survivingBlockerCount: 2, cycle: 2, cycleBudget: 3, priorBlockerCount: null }) === "revise");
 
+// ---- validCitation ----
+check("cite-valid",           validCitation({ file: "spec.md", locator: "§ X" }) === true);
+check("cite-missing-locator", validCitation({ file: "spec.md", locator: "" }) === false);
+check("cite-null",            validCitation(null) === false);
+
+// ---- collectContested: different-role + citation present; NO char-count ----
+const concerns = [
+  { id: "architect-1", raised_by: "architect", severity: "blocker", text: "t1", refuted: false },
+  { id: "qa-1",        raised_by: "qa",        severity: "major",   text: "t2", refuted: false },
+];
+const refMap = {
+  "architect-1": [
+    { role: "architect", verdict: "refute", reason: "self refutation", citation: { file: "spec.md", locator: "x" } }, // self → excluded
+    { role: "coder",     verdict: "refute", reason: "nope",            citation: { file: "spec.md", locator: "§Y" } }, // different role + citation → eligible
+  ],
+  "qa-1": [
+    { role: "architect", verdict: "refute", reason: "missing citation", citation: null },  // no citation → excluded
+    { role: "coder",     verdict: "affirm", reason: "agree" },                              // affirm → excluded
+  ],
+};
+const contested = collectContested(concerns, refMap);
+check("contested-picks-eligible",       contested.length === 1 && contested[0].id === "architect-1");
+check("contested-self-excluded",        contested[0].candidates.length === 1 && contested[0].candidates[0].role === "coder");
+check("contested-shortreason-eligible", contested[0].candidates[0].reason === "nope"); // a 4-char reason is eligible — the char-count proxy is GONE
+
+// ---- applyAdjudications: a concern dies ONLY when sound AND citation_resolves --
+let applied;
+applied = applyAdjudications(concerns, contested, [{ concern_id: "architect-1", sound: true,  citation_resolves: true  }]);
+check("adj-sound+resolves-dies", applied.find((c) => c.id === "architect-1").refuted === true);
+applied = applyAdjudications(concerns, contested, [{ concern_id: "architect-1", sound: true,  citation_resolves: false }]);
+check("adj-unresolved-survives", applied.find((c) => c.id === "architect-1").refuted === false);
+applied = applyAdjudications(concerns, contested, [{ concern_id: "architect-1", sound: false, citation_resolves: true  }]);
+check("adj-unsound-survives",    applied.find((c) => c.id === "architect-1").refuted === false);
+applied = applyAdjudications(concerns, contested, []);
+check("adj-empty-fail-safe",     applied.find((c) => c.id === "architect-1").refuted === false);
+
 console.log("-----");
 console.log("passed=" + pass + " failed=" + fail);
 process.exit(fail > 0 ? 1 : 0);

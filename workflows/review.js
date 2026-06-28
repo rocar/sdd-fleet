@@ -225,6 +225,32 @@ const REFUTATION_SCHEMA = {
   },
 };
 
+// The single model call in the survival vote: a neutral, stake-free adjudicator
+// rules, per contested concern, whether the refutation's reasoning is SOUND and
+// whether its citation RESOLVES (the cited line truly exists and supports it).
+// Replaces the char-count proxy. A concern dies only on sound && citation_resolves.
+const ADJUDICATION_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["verdicts"],
+  properties: {
+    verdicts: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["concern_id", "sound", "citation_resolves"],
+        properties: {
+          concern_id: { type: "string" },
+          sound: { type: "boolean" },
+          citation_resolves: { type: "boolean" },
+          note: { type: "string" },
+        },
+      },
+    },
+  },
+};
+
 // ---------- Phase 1: fan-out review ----------
 
 phase("Fan-out review");
@@ -286,7 +312,27 @@ const refutationMap = mergeRefutations(ROLES, xaResults);
 
 phase("Survival vote");
 
-const surviving = applySurvivalVote(allConcerns, refutationMap);
+// (a) Structural prefilter (pure, no model): different-role "refute"s carrying a
+// citation. The char-count proxy is gone — soundness is judged next, by a model.
+const contested = collectContested(allConcerns, refutationMap);
+
+// (b) The SINGLE model call in the vote: one neutral, stake-free adjudicator rules
+// whether each contested refutation is SOUND and whether its citation RESOLVES.
+// Skipped entirely when nothing is contested (no cost). A null/garbled result is
+// fail-safe — applyAdjudications leaves the concern standing (a concern survives
+// unless properly refuted).
+let adjudications = [];
+if (contested.length > 0) {
+  const adj = await agent(adjudicatePrompt(contested, feature, cycle), {
+    label: "adjudicate",
+    phase: "Survival vote",
+    schema: ADJUDICATION_SCHEMA,
+  });
+  adjudications = adj && Array.isArray(adj.verdicts) ? adj.verdicts : [];
+}
+
+// (c) Apply (pure): a concern dies iff its refutation was adjudicated sound + resolved.
+const surviving = applyAdjudications(allConcerns, contested, adjudications);
 const survivingBlockers = surviving.filter((c) => c.severity === "blocker" && !c.refuted);
 // Stamp a deterministic identity on each surviving blocker so "same blocker
 // across cycles" is a deterministic comparison in the record (design §02).
@@ -362,12 +408,13 @@ Read .sdd/${feature}/spec.md and .sdd/${feature}/acceptance.md yourself if you n
 Below are concerns raised by OTHER reviewers (not your own). For each, decide whether to
 REFUTE it (you believe it is not a real problem) or AFFIRM it (you agree it stands).
 
-A refutation only counts if it is substantive: at least ~40 characters of reasoning AND a
-structured citation pointing at the evidence. On every "refute" entry, set the citation
-field to { file, locator } — e.g. { "file": "spec.md", "locator": "§ Constraints" } or
-{ "file": "acceptance.md", "locator": "line 12" }. A refute without a citation is
-discarded by the script. If you cannot substantively refute, AFFIRM — that is the safe
-default (no citation needed on an affirm).
+A refutation must carry a structured citation pointing at the evidence. On every "refute"
+entry, set the citation field to { file, locator } — e.g. { "file": "spec.md", "locator":
+"§ Constraints" } or { "file": "acceptance.md", "locator": "line 12" }. A refute without a
+citation is discarded by the script. A NEUTRAL ADJUDICATOR then rules whether your
+reasoning is SOUND and whether the cited line truly RESOLVES — so make the reasoning
+genuinely support the citation; length/padding does not help. If you cannot substantively
+refute, AFFIRM — the safe default (no citation needed on an affirm).
 You cannot refute your own concerns (the script filters self-refutation).
 
 Peer concerns:
@@ -378,6 +425,32 @@ Return the structured object:
 - refutations: array of { concern_id, verdict ("refute"|"affirm"), reason, citation? }.
   citation = { file, locator } and is REQUIRED when verdict is "refute".
   Include one entry per peer concern.`;
+}
+
+function adjudicatePrompt(contested, feature, cycle) {
+  return `You are a NEUTRAL ADJUDICATOR for the survival vote, cycle ${cycle}. Active feature: ${feature}.
+You are stake-free — you neither raised nor refuted any of these concerns. Judge impartially.
+
+You have Read/Grep/Glob. READ the cited artifacts yourself before ruling:
+- .sdd/${feature}/spec.md
+- .sdd/${feature}/acceptance.md
+- any contract a citation names.
+
+Below are concerns whose refutations passed the structural filter (a DIFFERENT-role
+reviewer refuted them WITH a citation). For each concern, rule on its candidate refutation(s):
+- citation_resolves: does the cited file + locator actually EXIST and genuinely
+  SUPPORT the refutation? (Not merely "is a citation present" — does it RESOLVE.)
+- sound: does the refutation's reasoning actually hold — i.e. is the original
+  concern truly NOT a real problem?
+A concern is removed ONLY when BOTH are true. When in doubt, set sound=false — the
+safe default keeps the concern (the floor under detection).
+
+Contested concerns (each with its candidate refutations):
+${JSON.stringify(contested, null, 2)}
+
+Return the structured object:
+- verdicts: array of { concern_id, sound, citation_resolves, note? } — exactly ONE
+  entry per concern_id listed above.`;
 }
 
 function mergeConcerns(reviews) {
@@ -415,32 +488,6 @@ function mergeRefutations(roles, xaResults) {
   return map;
 }
 
-// A structured citation is valid when both file and locator are non-empty strings.
-// (Deliberately NOT validated against a fixed file list — locators like
-// "§ Constraints" or "line 12" against any cited artifact are acceptable.)
-function validCitation(c) {
-  return !!c &&
-    typeof c.file === "string" && c.file.trim().length > 0 &&
-    typeof c.locator === "string" && c.locator.trim().length > 0;
-}
-
-function applySurvivalVote(concerns, refutationMap) {
-  const MIN_REFUTATION_CHARS = 40;
-  return concerns.map((c) => {
-    const refs = (refutationMap[c.id] || []).filter(
-      (r) =>
-        r.verdict === "refute" &&
-        r.role !== c.raised_by &&
-        typeof r.reason === "string" &&
-        r.reason.length >= MIN_REFUTATION_CHARS &&
-        validCitation(r.citation)
-    );
-    if (refs.length === 0) return c;
-    const r = refs[0];
-    return { ...c, refuted: true, refuted_by: r.role, refutation_reason: r.reason, refutation_citation: r.citation };
-  });
-}
-
 // --- LAYER2-VOTE-HELPERS START — deterministic blocker identity + regression-guarded verdict ---
 // Extracted VERBATIM by scripts/workflow-vote-logic.test.sh — keep PURE: no
 // agent()/log()/args, deterministic, side-effect-free (so the real source is the
@@ -471,6 +518,65 @@ function computeVerdict(o) {
   if (typeof o.priorBlockerCount === "number" && o.priorBlockerCount >= 0 && cur >= o.priorBlockerCount)
     return "escalate";
   return "revise";
+}
+
+// validCitation: a structured citation is valid when file + locator are non-empty
+// strings (NOT validated against a fixed file list — "§ Constraints"/"line 12"
+// against any cited artifact is acceptable; whether it RESOLVES is the
+// adjudicator's call, below).
+function validCitation(c) {
+  return (
+    !!c &&
+    typeof c.file === "string" && c.file.trim().length > 0 &&
+    typeof c.locator === "string" && c.locator.trim().length > 0
+  );
+}
+
+// collectContested(concerns, refutationMap): the structural prefilter (pure, no
+// model). A refutation is ELIGIBLE only when it is a DIFFERENT-ROLE "refute"
+// carrying a citation — the two code-side survival gates (different role + citation
+// present). The old MIN_REFUTATION_CHARS length proxy is GONE: whether the
+// reasoning is SOUND and the citation RESOLVES is the adjudicator's single model
+// call, not a character count (design §02 — "replaces the char-count that only
+// pretended to judge soundness").
+function collectContested(concerns, refutationMap) {
+  const out = [];
+  for (const c of concerns) {
+    const candidates = (refutationMap[c.id] || []).filter(
+      (r) => r.verdict === "refute" && r.role !== c.raised_by && validCitation(r.citation)
+    );
+    if (candidates.length > 0) {
+      out.push({ id: c.id, raised_by: c.raised_by, severity: c.severity, text: c.text, candidates });
+    }
+  }
+  return out;
+}
+
+// applyAdjudications(concerns, contested, adjudications): apply (pure). A concern
+// dies iff the neutral adjudicator ruled its refutation SOUND and its citation
+// RESOLVES. A missing/false/garbled verdict leaves the concern standing —
+// fail-safe: a concern survives unless it is PROPERLY refuted (the design's "floor
+// under detection"). The record keeps the first eligible candidate's attribution.
+function applyAdjudications(concerns, contested, adjudications) {
+  const byId = {};
+  for (const v of adjudications || []) {
+    if (v && typeof v.concern_id === "string") byId[v.concern_id] = v;
+  }
+  const contestedById = {};
+  for (const c of contested) contestedById[c.id] = c;
+  return concerns.map((c) => {
+    const v = byId[c.id];
+    const ct = contestedById[c.id];
+    if (!ct || !v || v.sound !== true || v.citation_resolves !== true) return c;
+    const r = ct.candidates[0];
+    return {
+      ...c,
+      refuted: true,
+      refuted_by: r.role,
+      refutation_reason: r.reason,
+      refutation_citation: r.citation,
+    };
+  });
 }
 // --- LAYER2-VOTE-HELPERS END ---
 
