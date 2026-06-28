@@ -74,9 +74,30 @@ skill. Consult it for the CHANGE_REVIEW phase, the CHANGE_CYCLE budget
      - qa: meets `acceptance.md`? + coverage gaps before handoff.
    - The REVIEW.md entry format and severity rubric reminder.
 
+7b. **Run the deterministic counterfactual (the script decides, you narrate).**
+   Run the harness helper — it reverts ONLY the coder's source change (keeping the
+   qa-authored tests), runs the suite, and emits the verdict; you do not judge the
+   red/green delta yourself:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/counterfactual.sh"
+   ```
+   Key off its `SDD_FLEET_COUNTERFACTUAL: {…}` line (not your own reading of the
+   diff):
+   - `"verdict":"fail"` (the suite stays green after reverting the source) → the
+     tests are decorative. Treat it as an open `[blocker]` for this cycle: it
+     bounces to BUILD exactly like a reviewer blocker (step 8's blocker branch),
+     and you must surface the verdict line. Do **not** pass CHANGE_REVIEW.
+   - `"verdict":"pass"` → the change is load-bearing; continue.
+   - `"verdict":"skip"` (no source change, not a git repo, no test command, or a
+     red baseline) → the script could not adjudicate; fall back to qa's per-AC
+     counterfactual (`agents/qa.md`) and record the skip reason. Never treat
+     `skip` as `pass`.
+   Record the verdict line in `IMPL_NOTES.md` alongside qa's `counterfactual-snapshot`.
+
 8. **Evaluate the cycle.** Once both CHANGE_CYCLE blocks exist in
-   REVIEW.md:
-   - If any open `[blocker]` or any reviewer's `status: concerns-raised`
+   REVIEW.md **and the step-7b counterfactual did not return `fail`**:
+   - If any open `[blocker]` (including a `fail` counterfactual from 7b) or any
+     reviewer's `status: concerns-raised`
      → delegate to `sdd-fleet:coder` to fix (PHASE returns to `BUILD`).
      Do not auto-loop; tell the user that BUILD is open again and they
      should re-run `/sdd-fleet:pr-review` once coder is done. The

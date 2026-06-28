@@ -350,6 +350,13 @@ b. **Wait for QA's signal and verify.** When qa's Task call returns, parse its
    - The count in the `SDD_FLEET_QA_TESTS_READY: <N>` signal exactly matches the actually-failing
      count (no tolerance — strict counting; the deep-build workflow may relax this).
 
+   **On verification success, lock the suite.** Add `TESTS_LOCKED: <count>` to
+   `.sdd/<slug>/PROGRESS.md` (an `.sdd/` write, always gate-permitted) **before**
+   dispatching coder or routing to deep-build. This freezes the qa-authored tests
+   via the `write-lock-tests` hook — for the rest of BUILD the coder physically
+   cannot edit the suite it is judged against (the design's oracle-trust
+   guarantee). Idempotent: if `TESTS_LOCKED` is already present, leave it.
+
    If verification fails (zero tests, all pass, count mismatch), emit:
 
    ```
@@ -541,7 +548,7 @@ Same as `/sdd-fleet:feature-dev`: `Workflow` tool must be available (Claude Code
 
 3. **Check phase.** Read `.sdd/<slug>/PROGRESS.md`. PHASE must be `BUILD`. STATUS in `spec.md` must be `FINALIZED`. If either fails, refuse and name the actual state (`{"command":"deep-build","code":2,"reason":"not-finalized","status":"<STATUS>","phase":"<PHASE>"}`).
 
-4. **Check tests-first prerequisite.** List files under `tests/`. If empty or absent, refuse with: `SDD_FLEET_REFUSE: {"command":"deep-build","code":2,"reason":"no-failing-tests","detail":"run /sdd-fleet:feature-dev first so qa drafts the suite (tests-first ordering)"}`.
+4. **Check tests-first prerequisite.** List files under `tests/`. If empty or absent, refuse with: `SDD_FLEET_REFUSE: {"command":"deep-build","code":2,"reason":"no-failing-tests","detail":"run /sdd-fleet:feature-dev first so qa drafts the suite (tests-first ordering)"}`. If `TESTS_LOCKED` is absent in `.sdd/<slug>/PROGRESS.md`, add `TESTS_LOCKED: <count of test files>` now (the suite exists per this check) so the fan-out coders are write-locked out of the qa suite via the `write-lock-tests` hook.
 
 5. **Check for prior escalation.** If `.sdd/<slug>/ESCALATION.md` exists, refuse (`{"command":"deep-build","code":2,"reason":"escalation-present"}`) — `/sdd-fleet:resolve-escalation` is the unblock path.
 

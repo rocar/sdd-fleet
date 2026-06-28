@@ -13,6 +13,6 @@ for t in "$root"/hooks/scripts/*.test.sh "$root"/scripts/*.test.sh; do
   bash "$t" || fail=$((fail+1))
 done
 echo "── smoke"
-total=$((total+1)); bash "$root/docs/v0.5/smoke/smoke.sh" || fail=$((fail+1))
+total=$((total+1)); bash "$root/docs/smoke/smoke.sh" || fail=$((fail+1))
 echo "suites: $total, failed: $fail"
 exit $((fail > 0))
