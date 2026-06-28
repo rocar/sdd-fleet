@@ -89,12 +89,13 @@ newdatearg=$(mk newdatearg "$NEWDATEARG")
 assert_stdout new-date-with-arg-ok "$newdatearg" 'SDD_FLEET_LINT_PASS'
 assert_rc     new-date-with-arg-rc "$newdatearg" 0
 
-# ---- the four real, committed workflows must all pass (regression guard) ----
-assert_stdout real-review-passes     "$ROOT/workflows/review.js"      'SDD_FLEET_LINT_PASS'
-assert_rc     real-review-rc         "$ROOT/workflows/review.js"      0
-assert_rc     real-deep-build-rc     "$ROOT/workflows/deep-build.js"  0
-assert_rc     real-diagnose-rc       "$ROOT/workflows/diagnose.js"    0
-assert_rc     real-plan-review-rc    "$ROOT/workflows/plan-review.js" 0
+# ---- every real, committed workflow must pass (regression guard) ----
+assert_stdout real-review-passes     "$ROOT/workflows/review.js"        'SDD_FLEET_LINT_PASS'
+assert_rc     real-review-rc         "$ROOT/workflows/review.js"        0
+assert_rc     real-deep-build-rc     "$ROOT/workflows/deep-build.js"    0
+assert_rc     real-diagnose-rc       "$ROOT/workflows/diagnose.js"      0
+assert_rc     real-plan-review-rc    "$ROOT/workflows/plan-review.js"   0
+assert_rc     real-change-review-rc  "$ROOT/workflows/change-review.js" 0
 
 # ---- non-determinism is rejected ----
 DATENOW='export const meta = { name: "x", description: "y" };

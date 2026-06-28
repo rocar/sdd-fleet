@@ -189,9 +189,11 @@ status: concerns-raised | approved
 
 In workflow REVIEW the reviewer subagents return structured concerns payloads; the
 workflow merges them into the canonical entries above and the `scribe` appends them.
-On non-workflow review paths (CHANGE_REVIEW, direct role invocation) the
-`check-review-written` SubagentStop hook rejects a reviewer that stops without
-appending its block for the current cycle.
+REVIEW and CHANGE_REVIEW both run as workflows (`review.js`, `change-review.js`); the
+scribe appends the entries while the `.workflow-in-flight` marker holds the reviewer
+hooks down. On non-workflow paths (direct role invocation) the `check-review-written`
+SubagentStop hook rejects a reviewer that stops without appending its block for the
+current cycle.
 
 ## Severity rubric
 
@@ -301,18 +303,22 @@ never gating — see the `skill-routing` skill).
   budget; on `incomplete`, partial worktree writes are possible if coders had
   fanned out — inspect before re-running.
 
-**CHANGE_REVIEW.** `/sdd-fleet:pr-review` sets PHASE=CHANGE_REVIEW, increments
-`CHANGE_CYCLE`, and runs architect (design adherence + ADR compliance) +
-qa (meets `acceptance.md` + coverage gaps) against the diff. qa also
-runs the **counterfactual** — each test must FAIL if coder's source change were
-reverted (a test that passes regardless is decorative). The counterfactual is
-**snapshot-first**: record a `git stash create` SHA in IMPL_NOTES.md before any
-revert, operate against that ref, verify the restore against it before evaluating
-any verdict, and never use a bare `git checkout` of the changed files (full
-procedure in `agents/qa.md`).
+**CHANGE_REVIEW.** `/sdd-fleet:pr-review` dispatches the **change-review workflow**
+(`workflows/change-review.js`) — the same deterministic engine as REVIEW, on the
+implemented change: architect (design adherence + ADR compliance) + qa (meets
+`acceptance.md` + coverage gaps) fan out, cross-examine, and a neutral adjudicator
+holds the survival vote; the workflow's scribe writes `CHANGE_CYCLE`, the loop is
+bounded by the 3-cycle budget, and it escalates early if the surviving-blocker count
+fails to strictly fall. The **counterfactual** runs deterministically as a script
+(`scripts/counterfactual.sh`, invoked by the command — the workflow sandbox cannot
+exec): it reverts only the source change, runs the suite, and a `fail` (a test stays
+green on revert — decorative) enters the survival vote as a blocker. (The
+snapshot-first qa procedure in `agents/qa.md` remains the fallback when the script
+must `skip`, and the bug-lane VERIFY path.)
 
-Exit (to HANDOFF): all three approve with no open blockers. Fail → back to BUILD,
-bounded by the 3-cycle `CHANGE_CYCLE` budget, then ESCALATE.
+Exit: `clean` → HANDOFF (devops). `revise` → back to BUILD (coder re-implements);
+`escalate` (budget exhausted or count didn't fall) → ESCALATED — both written by the
+workflow's scribe.
 
 **HANDOFF.** devops takes the finalized, reviewed change → CI/CD, IaC, release
 notes. It advances only on an explicit `SDD_FLEET_DEVOPS_OK` signal (a silent or
