@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sdd-fleet — Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EAEDF1;
+    --paper-2:#E1E5EA;
+    --card:#F4F6F8;
+    --ink:#15181F;
+    --ink-soft:#4C515C;
+    --ink-faint:#828893;
+    --line:#C7CDD5;
+    --line-strong:#AEB6C0;
+
+    --architect:#7C3AED;
+    --coder:#2563EB;
+    --qa:#15803D;
+
+    --code:#0E7490;      /* deterministic */
+    --model:#5B6472;     /* probabilistic */
+    --human:#B45309;     /* accountability */
+
+    --code-bg:#D9EDF2;
+    --model-bg:#E7E9ED;
+    --human-bg:#F4E9D8;
+
+    --maxw:1120px;
+    --r:14px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Source Serif 4",Georgia,serif;
+    font-size:18px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  @media (max-width:640px){ body{font-size:16.5px} }
+
+  h1,h2,h3,h4,.disp{font-family:"Space Grotesk",system-ui,sans-serif;letter-spacing:-0.01em}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+
+  a{color:var(--coder);text-decoration:none;border-bottom:1px solid rgba(37,99,235,.3)}
+  a:hover{border-bottom-color:var(--coder)}
+
+  ::selection{background:#cfe3df;color:var(--ink)}
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 32px}
+  @media (max-width:640px){ .wrap{padding:0 20px} }
+
+  /* ---------- authority tags ---------- */
+  .tag{
+    display:inline-flex;align-items:center;gap:.45em;
+    font-family:"JetBrains Mono",monospace;font-weight:700;
+    font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    padding:.28em .6em;border-radius:5px;white-space:nowrap;line-height:1;
+    vertical-align:middle;
+  }
+  .tag svg{width:9px;height:9px}
+  .tag-code{color:#0a4a5c;background:var(--code-bg);border:1.5px solid var(--code)}
+  .tag-model{color:#3f4651;background:var(--model-bg);border:1.5px dashed var(--model)}
+  .tag-human{color:#824007;background:var(--human-bg);border:1.5px solid var(--human);box-shadow:inset 0 0 0 1.5px var(--human)}
+  .tag-arch{color:#fff;background:var(--architect)}
+  .tag-coder{color:#fff;background:var(--coder)}
+  .tag-qa{color:#fff;background:var(--qa)}
+
+  /* =====================================================
+     HERO
+  ===================================================== */
+  .hero{
+    position:relative;overflow:hidden;
+    border-bottom:1px solid var(--line);
+    background:
+      linear-gradient(180deg,#E6EAEF 0%, var(--paper) 70%);
+  }
+  .grid-bg{
+    position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background-image:
+      linear-gradient(var(--line) 1px,transparent 1px),
+      linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:34px 34px;
+    -webkit-mask-image:radial-gradient(ellipse 80% 70% at 70% 0%,#000 0%,transparent 75%);
+            mask-image:radial-gradient(ellipse 80% 70% at 70% 0%,#000 0%,transparent 75%);
+  }
+  .hero-inner{position:relative;padding:88px 0 76px}
+  @media (max-width:640px){ .hero-inner{padding:60px 0 52px} }
+  .eyebrow{
+    font-family:"JetBrains Mono",monospace;font-size:12.5px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--ink-faint);margin:0 0 26px;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--code)}
+  h1{
+    font-size:clamp(2.6rem,6.2vw,4.7rem);font-weight:700;line-height:1.02;
+    margin:0 0 8px;color:var(--ink);
+  }
+  h1 .b2{color:var(--ink-faint)}
+  .lede{
+    font-size:clamp(1.12rem,2.1vw,1.42rem);line-height:1.5;color:var(--ink-soft);
+    max-width:42ch;margin:26px 0 36px;
+  }
+  .lede b{color:var(--ink);font-weight:600}
+  .auth-key{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+  .auth-key .k{
+    flex:1 1 200px;min-width:0;background:var(--card);border:1px solid var(--line);
+    border-radius:10px;padding:14px 16px;
+  }
+  .auth-key .k .top{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+  .auth-key .k h4{margin:0;font-size:13.5px;font-weight:600;color:var(--ink)}
+  .auth-key .k p{margin:0;font-size:13.5px;line-height:1.45;color:var(--ink-soft);font-family:"Source Serif 4",serif}
+
+  /* =====================================================
+     SECTIONS
+  ===================================================== */
+  section{padding:74px 0;border-bottom:1px solid var(--line)}
+  @media (max-width:640px){ section{padding:52px 0} }
+  .sec-head{display:flex;gap:18px;align-items:baseline;margin-bottom:30px}
+  .sec-num{
+    font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:700;
+    color:var(--code);letter-spacing:.05em;flex:none;padding-top:.5em;
+  }
+  .sec-title-wrap{flex:1}
+  h2{font-size:clamp(1.7rem,3.6vw,2.5rem);font-weight:700;margin:0 0 6px;line-height:1.08}
+  .sec-sub{font-size:1.05rem;color:var(--ink-soft);margin:0;max-width:64ch}
+  .sec-sub b{color:var(--ink);font-weight:600}
+
+  p.body{max-width:68ch}
+  p.body b{font-weight:600}
+  .em{color:var(--ink);font-style:italic}
+
+  .pull{
+    border-left:3px solid var(--code);padding:4px 0 4px 20px;margin:26px 0;
+    font-size:1.12rem;line-height:1.5;color:var(--ink);max-width:60ch;
+  }
+  .pull.amber{border-color:var(--human)}
+  .pull.model{border-color:var(--model)}
+
+  /* ---------- layered architecture map ---------- */
+  .stack{display:flex;flex-direction:column;gap:14px;margin-top:8px}
+  .layer{
+    border:1px solid var(--line-strong);border-radius:var(--r);background:var(--card);
+    padding:20px 22px;position:relative;
+  }
+  .layer .lab{
+    position:absolute;top:-9px;left:18px;background:var(--paper);padding:0 8px;
+    font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);
+  }
+  .layer h3{margin:4px 0 4px;font-size:1.18rem;font-weight:600}
+  .layer p{margin:0;font-size:.96rem;color:var(--ink-soft);max-width:72ch}
+  .layer.l-con{border-color:var(--human);box-shadow:0 1px 0 rgba(180,83,9,.12)}
+  .layer.l-repo{border-color:var(--coder)}
+  .layer.l-gate{border-color:var(--code)}
+  .planes{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+  .plane{
+    flex:1 1 150px;background:var(--card);border:1px dashed var(--line-strong);
+    border-radius:10px;padding:13px 15px;
+  }
+  .plane .pn{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:700;color:var(--ink);margin-bottom:4px}
+  .plane .pr{font-size:12.5px;color:var(--ink-soft);line-height:1.4}
+  .plane .own{display:inline-block;margin-top:8px;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+
+  /* ---------- the three lenses ---------- */
+  .lenses{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:22px 0 8px}
+  @media (max-width:760px){ .lenses{grid-template-columns:1fr} }
+  .lens{border-radius:var(--r);padding:18px 18px 16px;border:1.5px solid}
+  .lens.arch{border-color:var(--architect);background:#f3edfd}
+  .lens.code{border-color:var(--coder);background:#eaf1fe}
+  .lens.qa{border-color:var(--qa);background:#e8f4ec}
+  .lens .lh{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+  .lens .lh b{font-family:"Space Grotesk",sans-serif;font-size:1.04rem}
+  .lens .q{font-style:italic;font-size:.95rem;color:var(--ink);margin:0 0 10px;line-height:1.4}
+  .lens ul{margin:0;padding-left:18px;font-size:.9rem;color:var(--ink-soft);line-height:1.5}
+  .lens .swatch{width:13px;height:13px;border-radius:50%;flex:none}
+  .arch .swatch{background:var(--architect)} .code .swatch{background:var(--coder)} .qa .swatch{background:var(--qa)}
+
+  /* ---------- machine flow strip ---------- */
+  .flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin:6px 0 4px;font-family:"JetBrains Mono",monospace}
+  .flow .st{background:var(--card);border:1px solid var(--line-strong);border-radius:7px;padding:7px 11px;font-size:12.5px;font-weight:500;color:var(--ink)}
+  .flow .gate{border-color:var(--code);color:#0a4a5c;background:var(--code-bg)}
+  .flow .arr{color:var(--ink-faint);font-size:13px}
+
+  /* ---------- SVG flow diagram ---------- */
+  .fd-fig{margin:12px 0 6px}
+  .fd-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:#EEF1F4;padding:18px}
+  .fd{display:block;min-width:760px;width:100%;height:auto;font-family:"JetBrains Mono",monospace}
+  .fd .nt{font-weight:700;font-size:12px;fill:var(--ink)}
+  .fd .nts{font-weight:700;font-size:10.5px;fill:var(--ink)}
+  .fd .sub{font-size:9.5px;fill:var(--ink-faint)}
+  .fd .ttl{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:10.5px;fill:var(--ink-faint);letter-spacing:.05em}
+  .fd .pt-c{font-size:9.5px;fill:#fff;font-weight:700}
+  .fd .pt-m{font-size:9.5px;fill:#3f4651;font-weight:700}
+  .fd .lbl-c{font-size:10px;fill:#0a4a5c;font-weight:700}
+  .fd .lbl-h{font-size:9.5px;fill:#824007;font-weight:700}
+  .fd .n-model{fill:var(--model-bg);stroke:var(--model);stroke-width:1.5;stroke-dasharray:5 4}
+  .fd .n-code{fill:var(--code-bg);stroke:var(--code);stroke-width:1.6}
+  .fd .n-human{fill:var(--human-bg);stroke:var(--human);stroke-width:1.6}
+  .fd .n-plain{fill:#fff;stroke:var(--line-strong);stroke-width:1.5}
+  .fd .frame{fill:rgba(255,255,255,.5);stroke:var(--model);stroke-width:1.3;stroke-dasharray:2 5}
+  .fd .lens-a{fill:#f3edfd;stroke:var(--architect);stroke-width:1.4}
+  .fd .lens-c{fill:#eaf1fe;stroke:var(--coder);stroke-width:1.4}
+  .fd .lens-q{fill:#e8f4ec;stroke:var(--qa);stroke-width:1.4}
+  .fd .pill-c{fill:var(--code);stroke:var(--code);stroke-width:1.2}
+  .fd .pill-m{fill:#fff;stroke:var(--model);stroke-width:1.2;stroke-dasharray:4 3}
+  .fd .dia{fill:var(--code-bg);stroke:var(--code);stroke-width:1.6}
+  .fd .edge{stroke:#4C515C;stroke-width:1.5;fill:none;marker-end:url(#fd-ah)}
+  .fd .edge-loop{stroke:var(--human);stroke-width:1.7;fill:none;marker-end:url(#fd-ah-h)}
+  .fd .jdot{fill:var(--human)}
+  .fd .flowdash{stroke-dasharray:7 5;animation:fddash 1s linear infinite}
+  @keyframes fddash{to{stroke-dashoffset:-24}}
+  .fd .cmd{fill:#1c2230;stroke:#39424f;stroke-width:1}
+  .fd .cmdt{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;fill:#cdd6e2}
+  .fd .cmdp{fill:#7fd1c4}
+  .fd-legend{display:flex;flex-direction:column;gap:9px;margin-top:12px;font-size:12.5px;color:var(--ink-soft)}
+  .fd-legend .lg-row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  .fd-legend .lg-title{font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);min-width:132px}
+  .fd-legend span{display:inline-flex;align-items:center;gap:7px}
+  .fd-legend i{width:13px;height:13px;border-radius:3px;display:inline-block;flex:none}
+  .cmd-sw{display:inline-flex;align-items:center;justify-content:center;height:17px;background:#1c2230;border:1px solid #39424f;border-radius:4px;color:#7fd1c4;font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;padding:0 5px;flex:none}
+  figcaption{font-size:.9rem;color:var(--ink-soft);margin-top:12px;max-width:74ch;line-height:1.5}
+  figcaption b{color:var(--ink)}
+
+  /* ---------- filters / sub-rules ---------- */
+  .subrules{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+  @media (max-width:760px){ .subrules{grid-template-columns:1fr} }
+  .subrule{border:1.5px dashed var(--line-strong);border-radius:10px;padding:14px 15px;background:var(--card)}
+  .subrule.codeg{border-color:var(--code);border-style:solid}
+  .subrule.modelg{border-color:var(--model)}
+  .subrule h4{margin:0 0 6px;font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+  .subrule p{margin:0;font-size:13px;color:var(--ink-soft);line-height:1.45}
+
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:start}
+  @media (max-width:820px){ .twocol{grid-template-columns:1fr;gap:8px} }
+  .twocol h3{font-size:1.16rem;font-weight:600;margin:0 0 8px}
+  .twocol .rec h3{color:var(--code)} .twocol .idx h3{color:var(--code)}
+  .twocol p{font-size:.97rem;color:var(--ink-soft);max-width:none}
+  .twocol .card{border:1px solid var(--line-strong);border-radius:var(--r);padding:20px 22px;background:var(--card);height:100%}
+  .twocol .rec.card{border-color:var(--code)} .twocol .idx.card{border-color:var(--code);border-style:dashed}
+
+  .note{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--ink-faint);border-radius:8px;padding:14px 18px;margin-top:22px;font-size:.95rem;color:var(--ink-soft)}
+  .note b{color:var(--ink)}
+
+  /* descriptor code block */
+  pre.code{
+    background:#11141a;color:#cdd6e2;border-radius:12px;padding:20px 22px;overflow:auto;
+    font-family:"JetBrains Mono",monospace;font-size:13px;line-height:1.6;margin:20px 0;
+    border:1px solid #232a36;
+  }
+  pre.code .c{color:#7a8595}
+  pre.code .k{color:#7fd1c4}
+  pre.code .v{color:#e6b873}
+  pre.code .s{color:#9db8ef}
+
+  /* =====================================================
+     WALKTHROUGH (centrepiece)
+  ===================================================== */
+  .wt{background:linear-gradient(180deg,#E6EAEF,var(--paper));border-bottom:1px solid var(--line)}
+  .wt-shell{border:1px solid var(--line-strong);border-radius:18px;background:var(--card);overflow:hidden;margin-top:26px;box-shadow:0 24px 60px -40px rgba(20,24,31,.5)}
+  .wt-top{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid var(--line);background:#EEF1F4;flex-wrap:wrap}
+  .wt-top .lhs{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
+  .wt-top .lhs b{color:var(--ink);font-weight:700}
+  .wt-ctrl{display:flex;gap:8px;align-items:center}
+  .btn{
+    font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:700;letter-spacing:.05em;
+    border:1.5px solid var(--line-strong);background:var(--card);color:var(--ink);
+    border-radius:8px;padding:8px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;
+    transition:border-color .15s,background .15s,transform .05s;
+  }
+  .btn:hover{border-color:var(--ink);background:#fff}
+  .btn:active{transform:translateY(1px)}
+  .btn[disabled]{opacity:.4;cursor:not-allowed}
+  .btn.play{border-color:var(--code);color:#0a4a5c;background:var(--code-bg)}
+  .btn:focus-visible,a:focus-visible,.step-chip:focus-visible{outline:3px solid #93c5be;outline-offset:2px}
+
+  /* lanes diagram */
+  .lanes{display:grid;grid-template-columns:repeat(6,1fr);gap:0;border-bottom:1px solid var(--line);background:#EEF1F4}
+  .lane{padding:14px 10px 18px;border-right:1px dashed var(--line);text-align:center;position:relative;transition:background .3s}
+  .lane:last-child{border-right:0}
+  .lane .ln{font-family:"JetBrains Mono",monospace;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px;line-height:1.3}
+  .lane .puck{
+    width:34px;height:34px;margin:0 auto;border-radius:9px;border:1.5px solid var(--line-strong);
+    background:var(--paper);display:flex;align-items:center;justify-content:center;
+    transition:all .3s;color:var(--ink-faint);
+  }
+  .lane .puck svg{width:17px;height:17px}
+  .lane.on{background:#fff}
+  .lane.on .ln{color:var(--ink)}
+  .lane.on .puck{transform:scale(1.12)}
+  .lane.act-code.on .puck{border-color:var(--code);background:var(--code-bg);color:#0a4a5c}
+  .lane.act-model.on .puck{border-color:var(--model);background:var(--model-bg);color:#3f4651;border-style:dashed}
+  .lane.act-human.on .puck{border-color:var(--human);background:var(--human-bg);color:#824007}
+  .lane .pulse{position:absolute;left:50%;top:24px;width:34px;height:34px;margin-left:-17px;border-radius:9px;opacity:0}
+  .lane.on .pulse{animation:pulse 1.8s ease-out infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(15,118,110,.35);opacity:1}100%{box-shadow:0 0 0 16px rgba(15,118,110,0);opacity:0}}
+
+  /* step body */
+  .wt-body{padding:26px 28px 30px;min-height:248px}
+  @media (max-width:640px){ .wt-body{padding:22px 18px} }
+  .wt-meta{display:flex;align-items:center;gap:14px;margin-bottom:12px;flex-wrap:wrap}
+  .wt-step-n{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:700;color:var(--ink-faint)}
+  .wt-h{font-family:"Space Grotesk",sans-serif;font-size:1.5rem;font-weight:700;margin:0 0 12px;line-height:1.12}
+  @media (max-width:640px){ .wt-h{font-size:1.24rem} }
+  .wt-p{font-size:1.04rem;line-height:1.55;color:var(--ink);max-width:75ch;margin:0 0 16px}
+  .wt-p b{font-weight:600}
+  .wt-p .hot{background:#f6e7cf;padding:.05em .25em;border-radius:3px}
+  .arts{display:flex;flex-wrap:wrap;gap:8px}
+  .art{font-family:"JetBrains Mono",monospace;font-size:11.5px;background:var(--paper-2);border:1px solid var(--line-strong);border-radius:6px;padding:5px 9px;color:var(--ink-soft)}
+  .art b{color:var(--ink);font-weight:700}
+
+  /* step rail */
+  .rail{display:flex;gap:5px;padding:14px 20px;border-top:1px solid var(--line);background:#EEF1F4;flex-wrap:wrap}
+  .step-chip{
+    flex:1 1 auto;min-width:18px;height:7px;border-radius:4px;background:var(--line-strong);
+    border:0;padding:0;cursor:pointer;transition:background .2s,transform .1s;
+  }
+  .step-chip:hover{transform:scaleY(1.5)}
+  .step-chip.done{background:var(--ink-faint)}
+  .step-chip.cur{background:var(--code)}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:18px;font-size:13px;color:var(--ink-soft)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+  /* =====================================================
+     CLOSING ledger
+  ===================================================== */
+  .ledger{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:6px}
+  @media (max-width:820px){ .ledger{grid-template-columns:1fr} }
+  .led{border-radius:var(--r);padding:20px;border:1.5px solid}
+  .led.c{border-color:var(--code);background:var(--code-bg)}
+  .led.m{border-color:var(--model);background:var(--model-bg);border-style:dashed}
+  .led.h{border-color:var(--human);background:var(--human-bg)}
+  .led h3{margin:0 0 10px;display:flex;align-items:center;gap:9px;font-size:1.05rem;font-weight:700}
+  .led ul{margin:0;padding-left:18px;font-size:.92rem;line-height:1.55}
+  .led.c ul{color:#0a4a5c} .led.m ul{color:#3f4651} .led.h ul{color:#824007}
+
+  .replay{
+    margin-top:30px;border:1px solid var(--line-strong);border-radius:var(--r);
+    background:#11141a;color:#cdd6e2;padding:24px 26px;
+  }
+  .replay .rl{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#7fd1c4;margin-bottom:12px}
+  .replay p{margin:0;font-size:1.02rem;line-height:1.6;color:#dde4ee;max-width:78ch;font-family:"Source Serif 4",serif}
+  .replay .q{color:#e6b873;font-style:italic}
+
+  footer{padding:40px 0 56px;color:var(--ink-faint);font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.04em}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+
+  .kbd{font-family:"JetBrains Mono",monospace;font-size:11px;background:var(--paper-2);border:1px solid var(--line-strong);border-bottom-width:2px;border-radius:4px;padding:1px 6px;color:var(--ink-soft)}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important;transition:none !important;scroll-behavior:auto !important}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="grid-bg"></div>
+  <div class="wrap hero-inner">
+    <p class="eyebrow"><span class="dot"></span> sdd-fleet · a Claude Code plugin · architecture &amp; governance</p>
+    <h1>Deterministic harness.<br><span class="b2">Probabilistic generation.</span></h1>
+    <p class="lede"><b>sdd-fleet</b> is a spec-driven, multi-agent development system for a regulated estate — where <b>harness owns every consequence</b>, <b>models judge only the irreducible residue</b>, and <b>humans own the blast radius</b>. Engineered for audit and replay, not just speed.</p>
+    <div class="auth-key">
+      <div class="k">
+        <div class="top"><span class="tag tag-code">Harness</span></div>
+        <h4>Deterministic &amp; fail-closed</h4>
+        <p>Gates, counting, routing, the loop. Reproducible. Agents cannot talk past it.</p>
+      </div>
+      <div class="k">
+        <div class="top"><span class="tag tag-model">Model</span></div>
+        <h4>Probabilistic judgement</h4>
+        <p>Drafting, review, the one contested call. Isolated to a single logged role.</p>
+      </div>
+      <div class="k">
+        <div class="top"><span class="tag tag-human">Human</span></div>
+        <h4>Accountability</h4>
+        <p>Ratification before fan-out, sign-off on money and PII. The catch the machine can't be.</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ 00 PRINCIPLE ============ -->
+<section id="principle">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">00</div>
+      <div class="sec-title-wrap">
+        <h2>Why the scaffolding exists</h2>
+        <p class="sec-sub">An AI agent generates <em>plausible</em> code non-deterministically — re-run the same prompt, get a different answer — and left unbounded it also <b>decides its own consequences</b>: whether a concern matters, whether to merge. A regulated bank cannot ship that: when a wrong call moves money or leaks PII, “it usually gets it right” is not a control, and nothing is reproducible or auditable. The fix is not a better model — it is a <b>deterministic harness over probabilistic generation</b>.</p>
+      </div>
+    </div>
+    <p class="body">Every input that could vary run-to-run — what a reviewer flags, what a refutation says, how code is written — is the model's. Every <em class="em">consequence</em> drawn from those outputs — does a concern survive, does a gate open, does the loop continue, does this escalate — is the <b>harness</b>: pure code, identical on a re-run given the same artifacts. The model judges; the harness decides what happens next. That single boundary is what makes the system auditable in a bank, and it is drawn explicitly — by colour — at every step that follows.</p>
+    <div class="pull">Deterministic where it counts, model-judged only at the residue, human-owned at the blast radius.</div>
+  </div>
+</section>
+
+<!-- ============ 01 ARCHITECTURE ============ -->
+<section id="architecture">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">01</div>
+      <div class="sec-title-wrap">
+        <h2>The architecture: a control stack and its records</h2>
+        <p class="sec-sub">Two halves: a <b>stack of three control layers</b> — who acts — over the <b>record planes</b> where truth lives. The records have a centre: the <b>workspace vault</b>, the system’s memory and single source of truth, which Jira, the registry and the catalog orbit. Each store owns <b>exactly one</b> kind of fact, assigned up front — because the classic failure is two stores both claiming the same truth.</p>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="layer l-con">
+        <span class="lab">Layer 3 · workspace</span>
+        <h3>The workspace — plan above, conductor dispatches <span class="tag tag-model">Model</span> <span class="tag tag-code">Harness</span> <span class="tag tag-human">Human</span></h3>
+        <p>A parent folder over the member repos — git submodules, one Obsidian vault. <b>epic-plan</b> (model&nbsp;+&nbsp;human) authors the dependency DAG and the contract design into <span class="mono">workspace/.sdd/</span>, ratified before any fan-out. The <b>conductor</b> then dispatches: a level-triggered reconciler with no model in the loop — so the widest-blast-radius layer is the most deterministic, not the least. Planning is a command; dispatch is plumbing.</p>
+      </div>
+      <div class="layer l-repo">
+        <span class="lab">Layer 2 · per-repo</span>
+        <h3>The feature machine — one per repository <span class="tag tag-model">Model</span> <span class="tag tag-code">Harness</span></h3>
+        <p>SPEC&nbsp;→&nbsp;REVIEW&nbsp;→&nbsp;FINALIZE&nbsp;→&nbsp;BUILD&nbsp;→&nbsp;CHANGE&nbsp;REVIEW&nbsp;→&nbsp;HANDOFF. A <b>coded harness</b> runs the phases and routes the work; the model only drafts and reviews <em>within</em> them, never writing source or reordering a phase. Single-worktree, so two changes never race in one repo.</p>
+      </div>
+      <div class="layer l-gate">
+        <span class="lab">Layer 1 · enforcement</span>
+        <h3>Hooks — the gates are the product <span class="tag tag-code">Harness</span></h3>
+        <p>The harness owns the <em>sequence</em>; the hooks own the <em>boundary</em>. Fail-closed, they block a forbidden action however it is initiated — no source before the spec is finalized, no handoff on a failing or untraceable suite, no contract change without a published, version-bumped spec — catching any deviation the harness did not foresee, the model going off-script inside a phase included. That in-session, tool-level interception is the part a Copilot-skills port cannot carry — and the core of the Claude&nbsp;Code case.</p>
+      </div>
+    </div>
+
+    <div class="planes">
+      <div class="plane" style="box-shadow:inset 3px 0 0 var(--code)"><div class="pn">The vault — two .sdd/ levels</div><div class="pr">One Obsidian vault over the submodules, but <b>two .sdd/ levels</b>: <b>workspace .sdd/</b> (epic plans, contract design, promoted lessons) and <b>each repo's own .sdd/</b> (that repo's specs, acceptance, ADRs). Each fact lives at exactly one level.</div><span class="own">owns · source of truth · the spine</span></div>
+      <div class="plane"><div class="pn">Jira</div><div class="pr">Intent, business value, roadmap, status, sign-off — plus a pointer to the plan.</div><span class="own">owns · human surface</span></div>
+      <div class="plane"><div class="pn">Contract registry</div><div class="pr">Published OpenAPI / Avro / proto, versioned, append-only.</div><span class="own">owns · the interface</span></div>
+      <div class="plane"><div class="pn">Service catalog</div><div class="pr">Dependency graph, reverse edges, blast radius.</div><span class="own">derived · recomputed</span></div>
+    </div>
+    <div class="note"><b>Direction of flow.</b> A business intent kicks off <b>epic-plan</b>, which authors the contract design and DAG into the workspace vault; a human ratifies the plan, and <b>only then does epic-plan materialise it in Jira</b> — writing the epic and seeding each story with high-level context. Per-repo <span class="mono">jira-story &lt;ID&gt;</span> reads its story as starting context and pulls the structured detail from the vault; status and decisions flow back up to Jira. Each fact is authoritative in <b>exactly one</b> place, so two stores can never disagree about it — the contract version is the registry’s, intent and status are Jira’s, the plan is the vault’s.</div>
+
+    <h3 style="font-family:'Space Grotesk';font-size:1.16rem;margin:34px 0 6px;font-weight:600">The whole system as one flow</h3>
+    <p class="body">The three layers and the record planes, traced end to end for a single change — from a business intent to a replayable audit trail. The detailed views that follow expand the two shaded lanes: <b>§02</b> the per-repo machine, <b>§03</b> the workspace.</p>
+    <figure class="fd-fig">
+      <div class="fd-wrap">
+        <svg class="fd" viewBox="0 0 1010 470" role="img" aria-label="sdd-fleet end to end, for one change. WORKSPACE Layer 3: a business intent runs epic-plan (model plus human), which authors the plan and contract design into the vault; a human ratifies it before fan-out; only then is the Jira epic and its stories written, each seeded with high-level context; the conductor, a harness reconciler with no model, dispatches each ready story. PER-REPO Layer 2: jira-story with a story ID reads its Jira story as starting context, then runs the phase spine SPEC, REVIEW, FINALIZE gate, BUILD, CHANGE REVIEW, HANDOFF; Layer 1 hooks enforce the code gates — testability, traceability, write-lock, dependency, counterfactual — fail-closed at the tool boundary. HANDOFF is a human approve-and-merge; on merge the contract publishes to the registry and the catalog rebuilds, leaving a gated, replayable audit trail. Status flows back to Jira throughout and cross-service lessons are promoted into the vault by a human.">
+          <defs>
+            <marker id="e2e-ah" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#4C515C"/></marker>
+            <marker id="e2e-ah-h" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#B45309"/></marker>
+          </defs>
+
+          <!-- ============ LANE A · WORKSPACE (Layer 3) ============ -->
+          <rect class="frame" x="16" y="40" width="978" height="104" rx="10"/>
+          <text class="ttl" x="36" y="60">WORKSPACE · Layer 3 — plan · ratify · dispatch (model + human + harness)</text>
+
+          <rect class="n-plain" x="36" y="78" width="118" height="52" rx="7"/>
+          <text class="nts" x="95" y="108" text-anchor="middle">business intent</text>
+
+          <path class="edge" style="marker-end:url(#e2e-ah)" d="M154,104 H180"/>
+          <rect class="n-model" x="180" y="78" width="150" height="52" rx="7"/>
+          <text class="nts" x="255" y="100" text-anchor="middle">epic-plan</text>
+          <text class="sub" x="255" y="116" text-anchor="middle">plan + contract → vault</text>
+
+          <path class="edge" style="marker-end:url(#e2e-ah)" d="M330,104 H356"/>
+          <rect class="n-human" x="356" y="78" width="128" height="52" rx="7"/>
+          <text class="nts" x="420" y="100" text-anchor="middle">RATIFY ◆</text>
+          <text class="sub" x="420" y="116" text-anchor="middle">sign off plan</text>
+          <text class="lbl-h" x="420" y="142" text-anchor="middle">before fan-out</text>
+
+          <path class="edge" style="marker-end:url(#e2e-ah)" d="M484,104 H510"/>
+          <rect class="n-plain" x="510" y="78" width="188" height="52" rx="7"/>
+          <text class="nts" x="604" y="100" text-anchor="middle">Jira · epic + stories</text>
+          <text class="sub" x="604" y="116" text-anchor="middle">written after ratify</text>
+
+          <path class="edge" style="marker-end:url(#e2e-ah)" d="M698,104 H724"/>
+          <rect class="n-code" x="724" y="78" width="238" height="52" rx="7"/>
+          <text class="nts" x="843" y="100" text-anchor="middle">conductor · reconciler</text>
+          <text class="sub" x="843" y="116" text-anchor="middle">status + registry → dispatch · no model</text>
+
+          <!-- dispatch wrap into per-repo lane -->
+          <path class="edge" style="marker-end:url(#e2e-ah)" d="M843,130 V154 H111 V210"/>
+          <text class="lbl-c" x="455" y="149" text-anchor="middle">conductor dispatches a ready story → §2</text>
+
+          <!-- ============ LANE B · PER-REPO MACHINE (Layer 2) ============ -->
+          <rect class="frame" x="16" y="176" width="978" height="200" rx="10"/>
+          <text class="ttl" x="36" y="196">PER-REPO FEATURE MACHINE · Layer 2 — one change: intent → merge (model drafts; harness gates)</text>
+
+          <rect class="n-model" x="36" y="210" width="150" height="52" rx="7"/>
+          <text class="nts" x="111" y="232" text-anchor="middle">jira-story &lt;ID&gt;</text>
+          <text class="sub" x="111" y="248" text-anchor="middle">reads Jira story as start</text>
+
+          <path class="edge" style="marker-end:url(#e2e-ah)" d="M186,236 H204"/>
+          <rect class="n-model" x="204" y="210" width="100" height="52" rx="7"/>
+          <text class="nts" x="254" y="232" text-anchor="middle">SPEC</text>
+          <text class="sub" x="254" y="248" text-anchor="middle">draft + freeze</text>
+
+          <path class="edge" style="marker-end:url(#e2e-ah)" d="M304,236 H316"/>
+          <rect class="n-model" x="316" y="210" width="100" height="52" rx="7"/>
+          <text class="nts" x="366" y="232" text-anchor="middle">REVIEW</text>
+          <text class="sub" x="366" y="248" text-anchor="middle">fan-out · vote · ≤3</text>
+
+          <path class="edge" style="marker-end:url(#e2e-ah)" d="M416,236 H428"/>
+          <rect class="n-code" x="428" y="210" width="104" height="52" rx="7"/>
+          <text class="nts" x="480" y="232" text-anchor="middle">FINALIZE ▣</text>
+          <text class="sub" x="480" y="248" text-anchor="middle">spec gate</text>
+
+          <path class="edge" style="marker-end:url(#e2e-ah)" d="M532,236 H544"/>
+          <rect class="n-model" x="544" y="210" width="100" height="52" rx="7"/>
+          <text class="nts" x="594" y="232" text-anchor="middle">BUILD</text>
+          <text class="sub" x="594" y="248" text-anchor="middle">tests-first</text>
+
+          <path class="edge" style="marker-end:url(#e2e-ah)" d="M644,236 H656"/>
+          <rect class="n-model" x="656" y="210" width="124" height="52" rx="7"/>
+          <text class="nts" x="718" y="232" text-anchor="middle">CHANGE REVIEW</text>
+          <text class="sub" x="718" y="248" text-anchor="middle">+ counterfactual</text>
+
+          <path class="edge" style="stroke:#B45309;marker-end:url(#e2e-ah-h)" d="M780,236 H820"/>
+          <rect class="n-human" x="820" y="210" width="124" height="52" rx="7"/>
+          <text class="nts" x="882" y="232" text-anchor="middle">HANDOFF ◆</text>
+          <text class="sub" x="882" y="248" text-anchor="middle">approve + merge</text>
+
+          <!-- Layer 1 hooks rail under the gated phases -->
+          <path style="stroke:#0E7490;stroke-width:1.2;fill:none;stroke-dasharray:2 4" d="M480,298 V262"/>
+          <path style="stroke:#0E7490;stroke-width:1.2;fill:none;stroke-dasharray:2 4" d="M594,298 V262"/>
+          <path style="stroke:#0E7490;stroke-width:1.2;fill:none;stroke-dasharray:2 4" d="M718,298 V262"/>
+          <rect x="204" y="298" width="576" height="50" rx="8" fill="#EAF3F5" stroke="#0E7490" stroke-width="1.4" stroke-dasharray="2 5"/>
+          <text class="nts" x="216" y="318" style="fill:#0a4a5c">Layer 1 · hooks — fail-closed at the tool boundary ▣</text>
+          <text class="sub" x="216" y="336" style="fill:#0a4a5c">testability · traceability · write-lock · dependency · counterfactual</text>
+
+          <text class="sub" x="36" y="368" style="fill:var(--ink-faint)">↑ every phase syncs status to Jira</text>
+
+          <!-- ============ publish + audit ============ -->
+          <rect class="n-code" x="540" y="400" width="184" height="48" rx="7"/>
+          <text class="nts" x="632" y="420" text-anchor="middle">publish on merge</text>
+          <text class="sub" x="632" y="436" text-anchor="middle">registry@ver · catalog rebuild</text>
+
+          <path class="edge" style="marker-end:url(#e2e-ah)" d="M724,424 H748"/>
+          <rect class="n-plain" x="748" y="400" width="196" height="48" rx="7"/>
+          <text class="nts" x="846" y="420" text-anchor="middle">audit &amp; replay</text>
+          <text class="sub" x="846" y="436" text-anchor="middle">the gated, replayable trail</text>
+
+          <path class="edge" style="stroke:#B45309;marker-end:url(#e2e-ah-h)" d="M882,262 V386 H632 V400"/>
+          <text class="lbl-h" x="772" y="382" text-anchor="middle">on merge</text>
+          <text class="sub" x="846" y="462" text-anchor="middle" style="fill:var(--ink-faint)">cross-service lesson → vault (human-promoted)</text>
+        </svg>
+      </div>
+      <div class="fd-legend">
+        <div class="lg-row"><span class="lg-title">Layers</span><span>Layer 3 · workspace</span><span>Layer 2 · per-repo</span><span>Layer 1 · hooks</span></div>
+        <div class="lg-row"><span class="lg-title">Decision authority</span><span><i style="background:var(--model);border:1px dashed var(--model)"></i> model judges</span><span><i style="background:var(--code)"></i> harness gates (▣)</span><span><i style="background:var(--human)"></i> human owns (◆)</span></div>
+      </div>
+      <figcaption><b>sdd-fleet, end to end.</b> One change through all three layers. <b>Workspace (L3):</b> a business intent runs <span class="mono">epic-plan</span> (model + human), which authors the plan and contract design into the vault; a human <b>ratifies</b> it, and only then is the <b>Jira epic + stories</b> written, each seeded with high-level context; the <b>conductor</b> (harness, no model) dispatches each ready story. <b>Per-repo (L2):</b> <span class="mono">jira-story &lt;ID&gt;</span> reads its story as starting context and runs the spine <span class="mono">SPEC → REVIEW → FINALIZE → BUILD → CHANGE REVIEW → HANDOFF</span>, with <b>Layer-1 hooks</b> enforcing the code gates fail-closed at the tool boundary. <b>HANDOFF</b> is a human approve-and-merge; on merge the contract <b>publishes</b> to the registry and the catalog rebuilds, leaving the <b>gated, replayable</b> trail. Status flows back to Jira throughout; cross-service lessons are promoted into the vault by a human. Colour marks who decides — model judges, harness gates (▣), human owns (◆).</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ 02 PER-REPO MACHINE ============ -->
+<section id="machine">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">02</div>
+      <div class="sec-title-wrap">
+        <h2>Inside one repository</h2>
+        <p class="sec-sub">The same three-lens method runs at every stage, so design rigour, implementation and quality are weighed throughout — <b>not just at review</b>. The lens is the unit; the machine carries one change from intent to merge.</p>
+      </div>
+    </div>
+
+        <figure class="fd-fig">
+      <div class="fd-wrap">
+        <svg class="fd" viewBox="0 0 1010 1070" role="img" aria-label="sdd-fleet per-repository flow: a phase spine (SPEC, REVIEW, FINALIZE gate, BUILD, CHANGE REVIEW, HANDOFF human approval) with four expanded bands. Band 1 SPEC: jira-story command authors the story from app context with a human confirm, architect drafts the gated spec, testability gate. Band 2 REVIEW: feature-dev runs fan-out to Architect/Coder/QA, cross-examine, survival vote, decision; surviving blockers go to architect re-draft before re-run, bounded with escalation. Band 3 BUILD: tests-first, traceability and write-lock gates, coder implements, dependency gate, raise PR. Band 4 CHANGE REVIEW: pr-review runs the same engine on PR info plus diff plus app context, adds a counterfactual; surviving blockers go to coder re-implement; pass leads to human HANDOFF approval.">
+<defs>
+            <marker id="fd-ah" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#4C515C"/></marker>
+            <marker id="fd-ah-h" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#B45309"/></marker>
+          </defs>
+
+
+          <!-- ============ SPINE ============ -->
+          <g text-anchor="middle">
+            <rect class="n-model" x="24"  y="24" width="140" height="44" rx="8"/>
+            <text class="nt" x="94"  y="51">SPEC</text>
+            <rect class="n-model" x="190" y="24" width="140" height="44" rx="8"/>
+            <text class="nt" x="260" y="51">REVIEW</text>
+            <rect class="n-code"  x="356" y="24" width="140" height="44" rx="8"/>
+            <text class="nt" x="426" y="51">FINALIZE</text>
+            <text class="sub" x="426" y="86">▣ gate</text>
+            <rect class="n-model" x="522" y="24" width="140" height="44" rx="8"/>
+            <text class="nt" x="592" y="51">BUILD</text>
+            <rect class="n-model" x="688" y="24" width="140" height="44" rx="8"/>
+            <text class="nts" x="758" y="51">CHANGE REVIEW</text>
+            <rect class="n-human" x="854" y="24" width="140" height="44" rx="8"/>
+            <text class="nt" x="924" y="51">HANDOFF</text>
+            <text class="sub" x="924" y="86">approve PR → merge</text>
+          </g>
+          <!-- spine arrows -->
+          <path class="edge" d="M164,46 H188"/>
+          <path class="edge" d="M330,46 H354"/>
+          <path class="edge" d="M496,46 H520"/>
+          <path class="edge" d="M662,46 H686"/>
+          <path class="edge" d="M828,46 H852"/>
+          <!-- expand badges under SPEC / REVIEW / BUILD -->
+          <g text-anchor="middle">
+            <circle cx="94"  cy="84" r="9" fill="#15181F"/><text x="94"  y="88" style="fill:#fff;font-size:11px;font-weight:700">1</text>
+            <circle cx="260" cy="84" r="9" fill="#15181F"/><text x="260" y="88" style="fill:#fff;font-size:11px;font-weight:700">2</text>
+            <circle cx="592" cy="84" r="9" fill="#15181F"/><text x="592" y="88" style="fill:#fff;font-size:11px;font-weight:700">3</text>
+            <circle cx="758" cy="84" r="9" fill="#15181F"/><text x="758" y="88" style="fill:#fff;font-size:11px;font-weight:700">4</text>
+          </g>
+
+                    <!-- ============ BAND 1 · SPEC (authoring + specify) ============ -->
+          <rect class="frame" x="24" y="108" width="962" height="190" rx="10"/>
+          <g text-anchor="middle">
+            <circle cx="48" cy="128" r="9" fill="#15181F"/><text x="48" y="132" style="fill:#fff;font-size:11px;font-weight:700">1</text>
+          </g>
+          <text class="ttl" x="66" y="132" style="fill:var(--ink)">STORY INTAKE → SPEC — author the story (model + human), then draft &amp; freeze the spec</text>
+          <rect class="cmd" x="800" y="153" width="178" height="20" rx="5"/>
+          <text class="cmdt" x="889" y="167" text-anchor="middle"><tspan class="cmdp">❯ </tspan>sdd-fleet:jira-story</text>
+          <rect class="cmd" x="800" y="243" width="178" height="20" rx="5"/>
+          <text class="cmdt" x="889" y="257" text-anchor="middle"><tspan class="cmdp">❯ </tspan>sdd-fleet:feature-dev</text>
+
+          <!-- row A: author the story -->
+          <g text-anchor="middle">
+            <rect class="n-plain" x="40"  y="150" width="140" height="46" rx="7"/>
+            <text class="nts" x="110" y="172">app context</text>
+            <text class="sub" x="110" y="186">catalog + knowledge</text>
+
+            <rect class="n-model" x="214" y="150" width="176" height="46" rx="7"/>
+            <text class="nts" x="302" y="172">↻ interrogate + draft</text>
+            <text class="sub" x="302" y="186">interrogate user · draft</text>
+
+            <rect class="n-human" x="430" y="150" width="110" height="46" rx="7"/>
+            <text class="nts" x="485" y="172">confirm</text>
+            <text class="sub" x="485" y="186" style="fill:#824007">human gate</text>
+
+            <rect class="n-plain" x="576" y="150" width="150" height="46" rx="7"/>
+            <text class="nts" x="651" y="172">Jira</text>
+            <text class="sub" x="651" y="186">story of record</text>
+          </g>
+          <path class="edge" d="M180,173 H212"/>
+          <text class="lbl" x="196" y="144" text-anchor="middle" style="font-size:9px;fill:var(--ink-soft)">grounds</text>
+          <path class="edge" d="M390,173 H428"/>
+          <text class="lbl" x="409" y="144" text-anchor="middle" style="font-size:9px;fill:var(--ink-soft)">draft</text>
+          <path class="edge" d="M540,173 H574"/>
+
+          <!-- hinge: confirmed story enters SPEC -->
+          <path class="edge" d="M651,196 V218 H115 V239"/>
+          <text class="lbl" x="392" y="213" text-anchor="middle" style="font-size:9px;fill:var(--ink-soft)">story → SPEC</text>
+
+          <!-- row B: specify -->
+          <g text-anchor="middle">
+            <rect class="n-plain" x="40"  y="240" width="150" height="46" rx="7"/>
+            <text class="nts" x="115" y="262">inherit context</text>
+            <text class="sub" x="115" y="276">conventions + neighbours</text>
+
+            <rect class="lens-a" x="204" y="240" width="160" height="46" rx="7"/>
+            <text class="nts" x="284" y="262">Architect drafts</text>
+            <text class="sub" x="284" y="276">spec + acceptance → repo .sdd/</text>
+
+            <rect class="n-code"  x="378" y="240" width="156" height="46" rx="7"/>
+            <text class="nts" x="456" y="262">testability ▣</text>
+            <text class="sub" x="456" y="276">each AC decidable?</text>
+
+            <rect class="n-plain" x="550" y="240" width="140" height="46" rx="7"/>
+            <text class="nts" x="620" y="262">repo .sdd/</text>
+            <text class="sub" x="620" y="276">frozen AC set</text>
+          </g>
+          <path class="edge" d="M190,263 H202"/>
+          <path class="edge" d="M364,263 H376"/>
+          <path class="edge" d="M534,263 H548"/>
+          <!-- status syncs back to Jira -->
+          <path class="edge" d="M620,240 V198"/>
+          <text class="lbl" x="632" y="226" text-anchor="start" style="font-size:9px;fill:var(--ink-soft)">status ↑</text>
+
+          <!-- ============ BAND 2 · REVIEW ============ -->
+          <rect class="frame" x="24" y="320" width="962" height="275" rx="10"/>
+          <g text-anchor="middle"><circle cx="48" cy="340" r="9" fill="#15181F"/><text x="48" y="344" style="fill:#fff;font-size:11px;font-weight:700">2</text></g>
+          <text class="ttl" x="66" y="344">REVIEW — fan-out · cross-examine · survival vote · bounded loop</text>
+          <rect class="cmd" x="470" y="330" width="178" height="20" rx="5"/>
+          <text class="cmdt" x="559" y="344" text-anchor="middle"><tspan class="cmdp">❯ </tspan>sdd-fleet:feature-dev</text>
+          <rect class="n-model" x="212" y="376" width="96" height="48" rx="7"/>
+          <text class="nts" x="260" y="404" text-anchor="middle">fan-out</text>
+                    <rect class="lens-a" x="340" y="362" width="118" height="26" rx="6"/>
+          <text class="nts" x="399" y="379" text-anchor="middle">Architect</text>
+          <rect class="lens-c" x="340" y="390" width="118" height="26" rx="6"/>
+          <text class="nts" x="399" y="407" text-anchor="middle">Coder</text>
+          <rect class="lens-q" x="340" y="418" width="118" height="26" rx="6"/>
+          <text class="nts" x="399" y="435" text-anchor="middle">QA</text>
+          <path class="edge" d="M308,400 L338,375"/>
+          <path class="edge" d="M308,400 L338,403"/>
+          <path class="edge" d="M308,400 L338,431"/>
+          <rect class="n-model" x="486" y="376" width="110" height="48" rx="7"/>
+          <text class="nts" x="541" y="396" text-anchor="middle">cross-examine</text>
+          <text class="sub" x="541" y="412" text-anchor="middle">refute · affirm</text>
+          <path class="edge" d="M458,375 L484,398"/>
+          <path class="edge" d="M458,403 L484,400"/>
+          <path class="edge" d="M458,431 L484,402"/>
+          <rect class="n-code"  x="632" y="358" width="190" height="86" rx="7"/>
+          <text class="ttl" x="727" y="374" text-anchor="middle">survival vote</text>
+          <rect class="pill-c" x="642" y="382" width="170" height="18" rx="4"/>
+          <text class="pt-c" x="650" y="395" text-anchor="start">filter · different role</text>
+          <rect class="pill-c" x="642" y="404" width="170" height="18" rx="4"/>
+          <text class="pt-c" x="650" y="417" text-anchor="start">filter · citation resolves</text>
+          <rect class="pill-m" x="642" y="426" width="170" height="14" rx="4"/>
+          <text class="pt-m" x="650" y="437" text-anchor="start">adjudicator · is it sound?</text>
+          <path class="edge" d="M596,400 H630"/>
+          <polygon class="dia" points="900,362 938,400 900,438 862,400"/>
+          <text class="nts" x="900" y="396" text-anchor="middle">blocker</text>
+          <text class="nts" x="900" y="408" text-anchor="middle">survives?</text>
+          <path class="edge" d="M822,400 H858"/>
+          <path class="edge" d="M900,362 V348"/>
+          <text class="lbl-c" x="900" y="344" text-anchor="middle">✓ pass —▸ finalize</text>
+          <path class="edge-loop flowdash" d="M900,438 V510 H630"/>
+          <rect class="lens-a" x="430" y="490" width="200" height="40" rx="7"/>
+          <text class="nts" x="530" y="510" text-anchor="middle">Architect re-drafts</text>
+          <text class="sub" x="530" y="524" text-anchor="middle">address the surviving blockers</text>
+          <path class="edge-loop flowdash" d="M430,510 H260 V424"/>
+          <circle class="jdot" cx="900" cy="510" r="3.6"/>
+          <text class="lbl-h" x="765" y="502" text-anchor="middle">blocker survives · count must fall</text>
+          <text class="lbl-h" x="345" y="502" text-anchor="middle">re-run · ≤ 3 rounds</text>
+          <path class="edge-loop" d="M900,510 V540"/>
+          <rect class="n-human" x="820" y="540" width="160" height="40" rx="7"/>
+          <text class="nts" x="900" y="560" text-anchor="middle">ESCALATE</text>
+          <text class="sub" x="900" y="574" text-anchor="middle">—▸ human backstop</text>
+          <text class="lbl-h" x="912" y="525" text-anchor="start">after 3×</text>
+          <rect class="n-plain" x="650" y="556" width="158" height="24" rx="6"/>
+          <text class="sub" x="729" y="571" text-anchor="middle" style="fill:var(--ink)">↑ status → Jira</text>
+
+          <!-- ============ BAND 3 · BUILD ============ -->
+          <rect class="frame" x="24" y="615" width="962" height="130" rx="10"/>
+          <g text-anchor="middle"><circle cx="48" cy="635" r="9" fill="#15181F"/><text x="48" y="639" style="fill:#fff;font-size:11px;font-weight:700">3</text></g>
+          <text class="ttl" x="66" y="639" style="fill:var(--ink)">BUILD — tests-first, implement, then raise the PR (suite write-locked)</text>
+          <rect class="cmd" x="800" y="625" width="178" height="20" rx="5"/>
+          <text class="cmdt" x="889" y="639" text-anchor="middle"><tspan class="cmdp">❯ </tspan>sdd-fleet:feature-dev</text>
+          <rect class="lens-q" x="40" y="666" width="138" height="48" rx="7"/>
+          <text class="nts" x="109" y="686" text-anchor="middle">QA · RED</text>
+          <text class="sub" x="109" y="700" text-anchor="middle">failing suite first</text>
+          <rect class="n-code" x="194" y="666" width="138" height="48" rx="7"/>
+          <text class="nts" x="263" y="686" text-anchor="middle">traceability ▣</text>
+          <text class="sub" x="263" y="700" text-anchor="middle">every AC ↦ a test</text>
+          <rect class="n-code" x="348" y="666" width="138" height="48" rx="7"/>
+          <text class="nts" x="417" y="686" text-anchor="middle">write-lock ▣</text>
+          <text class="sub" x="417" y="700" text-anchor="middle">test paths frozen</text>
+          <rect class="lens-c" x="502" y="666" width="138" height="48" rx="7"/>
+          <text class="nts" x="571" y="686" text-anchor="middle">Coder · GREEN</text>
+          <text class="sub" x="571" y="700" text-anchor="middle">implement to pass</text>
+          <rect class="n-code" x="656" y="666" width="138" height="48" rx="7"/>
+          <text class="nts" x="725" y="686" text-anchor="middle">dependency gate ▣</text>
+          <text class="sub" x="725" y="700" text-anchor="middle">new call must be declared</text>
+          <rect class="n-plain" x="810" y="666" width="138" height="48" rx="7"/>
+          <text class="nts" x="879" y="686" text-anchor="middle">raise PR</text>
+          <text class="sub" x="879" y="700" text-anchor="middle">open / update PR</text>
+          <path class="edge" d="M178,690 H194"/>
+          <path class="edge" d="M332,690 H348"/>
+          <path class="edge" d="M486,690 H502"/>
+          <path class="edge" d="M640,690 H656"/>
+          <path class="edge" d="M794,690 H810"/>
+          <rect class="n-plain" x="826" y="718" width="158" height="24" rx="6"/>
+          <text class="sub" x="905" y="733" text-anchor="middle" style="fill:var(--ink)">↑ status → Jira</text>
+
+          <!-- ============ BAND 4 · CHANGE REVIEW ============ -->
+          <rect class="frame" x="24" y="765" width="962" height="290" rx="10"/>
+          <g text-anchor="middle"><circle cx="48" cy="785" r="9" fill="#15181F"/><text x="48" y="789" style="fill:#fff;font-size:11px;font-weight:700">4</text></g>
+          <text class="ttl" x="66" y="789" style="fill:var(--ink)">CHANGE REVIEW — the same engine, on the PR (diff + app context)</text>
+          <rect class="cmd" x="800" y="775" width="178" height="20" rx="5"/>
+          <text class="cmdt" x="889" y="789" text-anchor="middle"><tspan class="cmdp">❯ </tspan>sdd-fleet:pr-review</text>
+          <rect class="n-plain" x="40" y="822" width="110" height="24" rx="6"/>
+          <text class="nts" x="95" y="838" text-anchor="middle">PR info</text>
+          <rect class="n-plain" x="40" y="848" width="110" height="24" rx="6"/>
+          <text class="nts" x="95" y="864" text-anchor="middle">diff</text>
+          <rect class="n-plain" x="40" y="874" width="110" height="24" rx="6"/>
+          <text class="nts" x="95" y="890" text-anchor="middle">app context</text>
+          <path class="edge" d="M150,834 L174,854"/>
+          <path class="edge" d="M150,860 L174,856"/>
+          <path class="edge" d="M150,886 L174,858"/>
+          <rect class="n-model" x="176" y="832" width="84" height="48" rx="7"/>
+          <text class="nts" x="218" y="860" text-anchor="middle">fan-out</text>
+          <rect class="lens-a" x="286" y="820" width="104" height="24" rx="6"/>
+          <text class="nts" x="338" y="836" text-anchor="middle">Architect</text>
+          <rect class="lens-c" x="286" y="846" width="104" height="24" rx="6"/>
+          <text class="nts" x="338" y="862" text-anchor="middle">Coder</text>
+          <rect class="lens-q" x="286" y="872" width="104" height="24" rx="6"/>
+          <text class="nts" x="338" y="888" text-anchor="middle">QA</text>
+          <path class="edge" d="M260,856 L284,832"/>
+          <path class="edge" d="M260,856 L284,858"/>
+          <path class="edge" d="M260,856 L284,884"/>
+          <rect class="n-model" x="416" y="832" width="100" height="48" rx="7"/>
+          <text class="nts" x="466" y="852" text-anchor="middle">cross-examine</text>
+          <text class="sub" x="466" y="868" text-anchor="middle">refute · affirm</text>
+          <path class="edge" d="M390,832 L414,854"/>
+          <path class="edge" d="M390,858 L414,856"/>
+          <path class="edge" d="M390,884 L414,858"/>
+          <rect class="n-code"  x="542" y="834" width="130" height="44" rx="7"/>
+          <text class="nts" x="607" y="854" text-anchor="middle">survival vote</text>
+          <text class="sub" x="607" y="868" text-anchor="middle">3 gates — see ②</text>
+          <path class="edge" d="M516,856 H540"/>
+          <rect class="n-code" x="698" y="832" width="128" height="48" rx="7"/>
+          <text class="nts" x="762" y="852" text-anchor="middle">counterfactual ▣</text>
+          <text class="sub" x="762" y="866" text-anchor="middle">fails if reverted?</text>
+          <path class="edge" d="M672,856 H696"/>
+          <polygon class="dia" points="900,820 936,856 900,892 864,856"/>
+          <text class="nts" x="900" y="860" text-anchor="middle">blockers?</text>
+          <path class="edge" d="M826,856 H862"/>
+          <path class="edge" d="M900,820 V806"/>
+          <text class="lbl-c" x="900" y="802" text-anchor="middle">✓ pass —▸ HANDOFF (human)</text>
+          <path class="edge-loop flowdash" d="M900,892 V950 H630"/>
+          <rect class="lens-c" x="430" y="930" width="200" height="40" rx="7"/>
+          <text class="nts" x="530" y="950" text-anchor="middle">Coder re-implements</text>
+          <text class="sub" x="530" y="964" text-anchor="middle">address the surviving blockers</text>
+          <path class="edge-loop flowdash" d="M430,950 H218 V880"/>
+          <circle class="jdot" cx="900" cy="950" r="3.6"/>
+          <text class="lbl-h" x="765" y="942" text-anchor="middle">blocker survives → re-implement in BUILD</text>
+          <text class="lbl-h" x="324" y="942" text-anchor="middle">re-run · ≤ 3, then escalate</text>
+          <path class="edge-loop" d="M900,950 V980"/>
+          <rect class="n-human" x="820" y="980" width="160" height="36" rx="7"/>
+          <text class="nts" x="900" y="1000" text-anchor="middle">ESCALATE</text>
+          <text class="sub" x="900" y="1014" text-anchor="middle">—▸ human backstop</text>
+          <text class="lbl-h" x="912" y="965" text-anchor="start">after 3×</text>
+          <rect class="n-plain" x="650" y="990" width="158" height="24" rx="6"/>
+          <text class="sub" x="729" y="1005" text-anchor="middle" style="fill:var(--ink)">↑ status → Jira</text>
+
+        </svg>
+      </div>
+      <div class="fd-legend">
+        <div class="lg-row"><span class="lg-title">Subagents · lenses</span><span><i style="background:#f3edfd;border:1px solid var(--architect)"></i> Architect</span><span><i style="background:#eaf1fe;border:1px solid var(--coder)"></i> Coder</span><span><i style="background:#e8f4ec;border:1px solid var(--qa)"></i> QA</span></div>
+        <div class="lg-row"><span class="lg-title">Claude Code commands</span><span><span class="cmd-sw">❯</span> sdd-fleet:jira-story · feature-dev · pr-review</span></div>
+        <div class="lg-row"><span class="lg-title">Decision authority</span><span><i style="background:var(--model);border:1px dashed var(--model)"></i> model judges</span><span><i style="background:var(--code)"></i> harness gates &amp; bounds (▣)</span><span><i style="background:var(--human)"></i> human gate</span></div>
+        <div class="lg-row"><span class="lg-title">Artifacts</span><span><i style="background:#fff;border:1px solid var(--line-strong)"></i> store / document</span></div>
+      </div>
+      <figcaption>The machine for one change in one repository. The spine is the phase flow; the four numbered bands expand the phases with internal work, each tagged with the <b>sdd-fleet command</b> that drives it. <b>① STORY INTAKE → SPEC</b> — <span class="mono">jira-story</span> authors the story of record (intake — grounded in catalog + knowledge, human-confirmed) into Jira; the SPEC phase proper then begins as the architect lens drafts the gated spec into <span class="mono">.sdd/</span>, frozen by a testability gate. <b>② REVIEW</b> (<span class="mono">feature-dev</span>) runs the engine on the spec; surviving blockers go to the <b>architect to re-draft</b> before re-running — bounded to 3 rounds, count must fall, then escalate. <b>③ BUILD</b> (<span class="mono">feature-dev</span>) is tests-first on a write-locked suite, a <b>dependency gate</b> forces any new service call to be declared, and the <b>PR is raised</b>. <b>④ CHANGE REVIEW</b> (<span class="mono">pr-review</span>) runs the same engine on the <b>PR — diff plus app context</b> — adding a counterfactual (each test must fail if reverted); surviving blockers go to the <b>coder to re-implement</b> in BUILD. FINALIZE is a code gate; <b>HANDOFF is a human approving and merging the PR</b>. Colour marks who decides: model judges, the harness gates &amp; bounds, the human owns the blast radius. Throughout, every phase reflects its progress back to Jira. These three commands drive the per-repo machine; the workspace's <span class="mono">epic-plan</span> and the conductor sit a layer above — see §03.</figcaption>
+    </figure>
+
+
+    <div class="lenses">
+      <div class="lens arch">
+        <div class="lh"><span class="swatch"></span><b>Architect</b></div>
+        <p class="q">“Does this fit conventions and the wider system?”</p>
+        <ul><li>Interfaces &amp; contracts</li><li>System &amp; blast-radius impact</li><li>Alignment to existing patterns</li></ul>
+      </div>
+      <div class="lens code">
+        <div class="lh"><span class="swatch"></span><b>Coder</b></div>
+        <p class="q">“Is the code correct, idiomatic, maintainable?”</p>
+        <ul><li>Correctness &amp; edge handling</li><li>Readable implementation</li><li>Docs kept in step</li></ul>
+      </div>
+      <div class="lens qa">
+        <div class="lh"><span class="swatch"></span><b>QA</b></div>
+        <p class="q">“Is it verified, and does it hold under stress?”</p>
+        <ul><li>Coverage &amp; gaps (from real runs)</li><li>Acceptance-criteria mapping</li><li>Risk &amp; regression</li></ul>
+      </div>
+    </div>
+
+    <h3 style="font-family:'Space Grotesk';font-size:1.16rem;margin:34px 0 6px;font-weight:600">Two hardening rules that carry the weight</h3>
+    <p class="body"><b>A floor under detection.</b> The review machine is good at refusing a bad concern; on its own it does nothing to guarantee a real one is raised — and three lenses of one model share blind spots. So each lens must return an explicit <em class="em">pass / fail / concern</em> on <b>every</b> acceptance criterion (silence on a requirement becomes impossible), a dedicated adversarial pass hunts security, money and PII separately, and QA is grounded in real coverage and mutation output rather than the model's opinion of it.</p>
+
+    <p class="body" style="margin-top:18px"><b>A trustworthy oracle.</b> Everything rests on the test suite, and the coder is rewarded for turning it green — the cheapest route to green is weakening the test. Two code-enforced fixes close it: every acceptance criterion must map to a test before implementation begins, and the test paths are <b>write-locked</b> for the rest of the run, so the coder physically cannot edit them.</p>
+
+    <div class="pull model">The survival vote is where the line is drawn most sharply: code checks what code can check; one neutral model judges the rest.</div>
+
+    <div class="subrules">
+      <div class="subrule codeg"><h4>Filter · different role <span class="tag tag-code" style="font-size:9px;padding:.2em .4em">Harness</span></h4><p>The refuter is never the concern's own author. No echo chamber.</p></div>
+      <div class="subrule codeg"><h4>Filter · citation resolves <span class="tag tag-code" style="font-size:9px;padding:.2em .4em">Harness</span></h4><p>The cited line must exist in the spec or contract. No citation, discarded.</p></div>
+      <div class="subrule modelg"><h4>Adjudicator · is it sound? <span class="tag tag-model" style="font-size:9px;padding:.2em .4em">Model</span></h4><p>One stake-free role rules whether the reasoning holds and the cited line truly supports it. Verdict logged. <em>Replaces the char-count that only pretended to judge soundness.</em></p></div>
+    </div>
+    <div class="note"><b>The loop is bounded and regression-guarded.</b> Surviving blockers route back for up to three rounds; the full suite re-runs each round; a blocker's identity is a hash of its mapped criterion, so “same blocker” is a deterministic comparison; if the count doesn't strictly fall, it escalates early rather than converging on something worse. After three rounds, the machine stops guessing and pulls in a person.</div>
+  </div>
+</section>
+
+<!-- ============ 03 CROSS-REPO ============ -->
+<section id="crossrepo">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">03</div>
+      <div class="sec-title-wrap">
+        <h2>The workspace</h2>
+        <p class="sec-sub">A bank change spans services, and the dangerous part is the <b>interface between them</b>. The <b>workspace</b> is where that change is planned and driven — a parent folder with the member repos as git submodules and a single Obsidian vault over them, an orchestration layer, <b>not a monorepo</b>. Two ideas make the interface safe: the contract is the shared spec, and a computed catalog gives every change its neighbourhood.</p>
+      </div>
+    </div>
+
+        <figure class="fd-fig">
+          <div class="fd-wrap">
+            <svg class="fd" viewBox="0 0 1010 460" role="img" aria-label="Layer 3 workspace. Member repos are git submodules under one folder opened as a single Obsidian vault, with a workspace-level .sdd/ and each submodule carrying its own repo-level .sdd/. epic-plan, a model and human command, authors the plan and contract design into workspace/.sdd/; a human ratifies it before fan-out, and only then does epic-plan write the Jira epic and create the stories, seeding each with high-level context. The conductor is a code-only level-triggered reconciler with no model: it reads story status and the registry fresh every tick, computes the ready frontier, and dispatches ready stories. Each dispatched story is picked up by the per-repo jira-story command with a story ID, which reads that Jira story as its starting context and runs the per-repo machine of section 2; a waiting story is released once its dependency publishes; status flows back up to Jira.">
+              <rect class="frame" x="16" y="16" width="978" height="120" rx="10"/>
+              <text class="ttl" x="40" y="40">workspace/  —  member repos as git submodules · one Obsidian vault</text>
+              <rect class="n-plain" x="36" y="52" width="250" height="60" rx="7"/>
+              <text class="nts" x="161" y="76" text-anchor="middle">workspace/.sdd/  ·  estate level</text>
+              <text class="sub" x="161" y="92" text-anchor="middle">epic plan · contract design · lessons</text>
+              <rect class="n-plain" x="420" y="60" width="156" height="44" rx="7"/>
+              <text class="nts" x="498" y="80" text-anchor="middle">authoriser/</text>
+              <text class="sub" x="498" y="94" text-anchor="middle">submodule @a1b2 · .sdd/</text>
+              <rect class="n-plain" x="586" y="60" width="156" height="44" rx="7"/>
+              <text class="nts" x="664" y="80" text-anchor="middle">checkout/</text>
+              <text class="sub" x="664" y="94" text-anchor="middle">submodule @c3d4 · .sdd/</text>
+              <rect class="n-plain" x="752" y="60" width="156" height="44" rx="7"/>
+              <text class="nts" x="830" y="80" text-anchor="middle">ledger/</text>
+              <text class="sub" x="830" y="94" text-anchor="middle">submodule @e5f6 · .sdd/</text>
+              <text class="sub" x="664" y="126" text-anchor="middle" style="fill:var(--ink-faint)">each submodule carries its own repo-level .sdd/ — specs · acceptance · ADRs</text>
+
+              <!-- TIER 1 · plan, ratify, then materialise into Jira -->
+              <rect class="cmd" x="36" y="158" width="188" height="20" rx="5"/>
+              <text class="cmdt" x="130" y="172" text-anchor="middle"><tspan class="cmdp">❯ </tspan>sdd-fleet:epic-plan</text>
+
+              <rect class="n-model" x="36" y="184" width="184" height="58" rx="7"/>
+              <text class="nts" x="128" y="208" text-anchor="middle">epic-plan</text>
+              <text class="sub" x="128" y="224" text-anchor="middle">plan + contract design → vault</text>
+
+              <path class="edge" d="M220,213 H242"/>
+              <rect class="n-human" x="244" y="184" width="150" height="58" rx="7"/>
+              <text class="nts" x="319" y="208" text-anchor="middle">RATIFY ▣</text>
+              <text class="sub" x="319" y="224" text-anchor="middle">sign off plan + contract</text>
+              <text class="lbl-h" x="319" y="258" text-anchor="middle">before fan-out</text>
+
+              <path class="edge" d="M394,213 H428"/>
+              <text class="sub" x="411" y="206" text-anchor="middle" style="fill:var(--ink-faint)">writes</text>
+              <rect class="n-plain" x="430" y="184" width="262" height="58" rx="7"/>
+              <text class="nts" x="561" y="208" text-anchor="middle">Jira · epic + stories</text>
+              <text class="sub" x="561" y="224" text-anchor="middle">seeds each story with high-level context</text>
+
+              <!-- bridge: the ratified plan's Jira stories feed the conductor's frontier -->
+              <path class="edge" d="M470,242 V288 H181 V318"/>
+              <text class="sub" x="332" y="282" text-anchor="middle" style="fill:var(--ink-faint)">stories → ready frontier</text>
+
+              <!-- TIER 2 · deterministic dispatch, then per-repo pickup -->
+              <rect class="n-code" x="36" y="320" width="290" height="78" rx="9"/>
+              <text class="nts" x="181" y="344" text-anchor="middle" style="font-weight:700">conductor · reconciler</text>
+              <text class="sub" x="181" y="362" text-anchor="middle">① status + registry → ② ready frontier → ③ dispatch</text>
+              <text class="sub" x="181" y="380" text-anchor="middle" style="fill:var(--ink-faint)">deterministic · no model · level-triggered</text>
+              <text class="sub" x="181" y="414" text-anchor="middle" style="fill:var(--ink-faint)">re-reads status + registry fresh every tick</text>
+
+              <path class="edge" d="M326,359 H358"/>
+              <rect class="n-plain" x="360" y="330" width="138" height="58" rx="7"/>
+              <text class="nts" x="429" y="354" text-anchor="middle">ready story</text>
+              <text class="sub" x="429" y="370" text-anchor="middle">dispatched</text>
+
+              <path class="edge" d="M498,359 H534"/>
+              <rect class="cmd" x="536" y="306" width="240" height="20" rx="5"/>
+              <text class="cmdt" x="656" y="320" text-anchor="middle"><tspan class="cmdp">❯ </tspan>sdd-fleet:jira-story &lt;ID&gt;</text>
+              <rect class="n-model" x="536" y="330" width="240" height="58" rx="7"/>
+              <text class="nts" x="656" y="354" text-anchor="middle">jira-story &lt;ID&gt;</text>
+              <text class="sub" x="656" y="370" text-anchor="middle">reads its Jira story as starting context</text>
+
+              <path class="edge" d="M776,359 H798"/>
+              <rect class="n-model" x="800" y="330" width="178" height="58" rx="7"/>
+              <text class="nts" x="889" y="352" text-anchor="middle">§2 per-repo machine</text>
+              <text class="sub" x="889" y="368" text-anchor="middle">SPEC → … → HANDOFF</text>
+
+              <!-- dependency ordering -->
+              <rect class="n-plain" x="360" y="406" width="138" height="40" rx="7" stroke-dasharray="5 4"/>
+              <text class="nts" x="429" y="425" text-anchor="middle">waiting story</text>
+              <text class="sub" x="429" y="439" text-anchor="middle">depends-on a publish</text>
+              <path class="edge flowdash" d="M429,406 V388"/>
+              <text class="sub" x="508" y="400" text-anchor="start" style="fill:var(--ink-faint)">released on publish</text>
+
+              <rect class="n-plain" x="800" y="406" width="178" height="26" rx="6"/>
+              <text class="sub" x="889" y="423" text-anchor="middle" style="fill:var(--ink)">↑ status → Jira</text>
+            </svg>
+          </div>
+          <figcaption><b>Layer 3 — the workspace.</b> The member repos are git submodules under one folder, opened as a single Obsidian vault — a workspace-level <span class="mono">.sdd/</span> over per-repo <span class="mono">.sdd/</span>s. <b>epic-plan</b> (model + human) authors the dependency DAG and contract design into <span class="mono">workspace/.sdd/</span>; a <b>human ratifies</b> it — the most valuable gate in the change — and <b>only then does epic-plan materialise it into Jira</b>, writing the <b>epic</b> and creating the <b>stories</b>, seeding each with high-level context. The <b>conductor</b> (a level-triggered reconciler, no model) reads story status and the registry fresh every tick, computes the ready frontier and dispatches; each ready story is picked up by the per-repo <span class="mono">jira-story &lt;ID&gt;</span>, which reads that Jira story as its <b>starting context</b> and runs the §2 machine. The vault still owns the structured plan and the registry owns the contract; Jira owns intent and status — no fact in two places. <b>Planning is a command; dispatch is deterministic plumbing</b> — which is why the conductor has no command of its own.</figcaption>
+        </figure>
+
+        <p class="body">The change is planned and driven from a <b>workspace</b>: a parent folder with the member repos as <b>git submodules</b> and a single Obsidian vault over them. Running <span class="mono">epic-plan</span> there (model drafts, human confirms) authors the dependency DAG and the <b>contract design</b> into <span class="mono">workspace/.sdd/</span>, which a human <b>ratifies before any fan-out</b>. Per-repo <span class="mono">jira-story</span> then inherits that ratified context, and a hook refuses to spec a story whose epic is not ratified. Because submodules pin exact SHAs, <em class="em">the workspace at a commit is a reproducible snapshot of the whole estate</em>.</p>
+
+    <div class="twocol" style="margin-bottom:10px">
+      <div>
+        <h3 style="color:var(--coder)">The contract is the shared spec</h3>
+        <p class="body">The schema — OpenAPI, Avro, proto — is the cross-service specification, and <b>consumer-driven contract tests are the cross-service acceptance</b>. The producer's change must not break a consumer's registered expectation; that test is the gate. The tests-first keystone extends across repositories unchanged.</p>
+      </div>
+      <div>
+        <h3 style="color:var(--code)">Structural awareness is computed, not curated</h3>
+        <p class="body">Each repo carries one small, human-owned, gated descriptor — identity plus its consume edges, lifecycle and data classes. The system map falls out of every descriptor and every published contract. You maintain per-service metadata; the graph regenerates. <b>Don't build an awareness store — consume the catalog</b> (Backstage or the minimal equivalent).</p>
+      </div>
+    </div>
+
+    <pre class="code"><span class="c"># service.yaml — repo root · committed · gated · human-owned</span>
+<span class="k">id</span>: payments-authoriser        <span class="c"># stable, never reused</span>
+<span class="k">team</span>: payments-core
+<span class="k">lifecycle</span>: <span class="v">active</span>              <span class="c"># active | deprecating | migrating</span>
+<span class="k">data_classes</span>: [<span class="v">pii</span>, <span class="v">money_movement</span>]   <span class="c"># feeds blast-radius</span>
+<span class="k">produces</span>:
+  - <span class="k">contract</span>: <span class="s">payments.authorise</span>
+    <span class="k">version</span>: <span class="v">3.3.0</span>
+    <span class="k">spec</span>: contracts/authorise.openapi.yaml
+<span class="k">consumes</span>:                       <span class="c"># this edge builds the graph</span>
+  - <span class="k">contract</span>: <span class="s">ledger.post</span>     <span class="k">version</span>: <span class="v">"&gt;=2.1 &lt;3"</span>
+  - <span class="k">contract</span>: <span class="s">fraud.score</span>    <span class="k">version</span>: <span class="v">"&gt;=1.4 &lt;2"</span></pre>
+
+    <p class="body"><b>The catalog feeds the gates, not just the prompt.</b> Reverse edges make blast radius <em class="em">deterministic</em>: a change to a contract resolves to its N transitive published consumers — computed, not guessed. That turns the autonomy rule from a hardcoded “touches auth” into a principled “reaches N consumers, or a money-movement service, therefore a human gate.” A cross-service-impact concern joins the fan-out: a semver check and a pinned-consumer lookup (both deterministic) leave the model only one call — <em>is this diff semantically breaking beyond its version bump?</em></p>
+
+    <h3 style="font-family:'Space Grotesk';font-size:1.16rem;margin:32px 0 6px;font-weight:600">The conductor is a reconciler, not an orchestrator</h3>
+    <p class="body">Planning the epic is a command; <b>dispatching it is not</b> — the conductor is control-plane plumbing, never a Claude&nbsp;Code surface, since a command would put a model back into the one layer whose value is having none. At the workspace layer there is no shared mutable state and no model in the loop. The conductor reads each repo's status and the registry fresh every tick, recomputes the ready frontier, and dispatches declaratively — a level-triggered controller in the Kubernetes sense. <b>Ground truth always wins over its own recollection</b>, so a crash mid-fan-out is invisible: on restart it resumes from real state. It persists only what can't be re-derived — the human decisions. Recovery is forward-only: a defective contract rolls forward to a new version, and the rework set is computed from the pinned versions each consumer recorded.</p>
+    <div class="note"><b>One integrity assumption, stated twice.</b> One orchestrator per worktree below; one conductor per epic by lease above. The same rule at both levels — that symmetry is what keeps the model honest as the estate scales.</div>
+  </div>
+</section>
+
+<!-- ============ 04 MEMORY ============ -->
+<section id="memory">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">04</div>
+      <div class="sec-title-wrap">
+        <h2>Memory: a linked vault, not a curated store</h2>
+        <p class="sec-sub">The estate has to remember its plans, specs, decisions and lessons. The trap is letting a model <b>curate</b> that memory — non-determinism in the foundation the next spec is built on. The fix falls out of the structure already chosen: the workspace is one Obsidian vault with the member repos nested as submodules — one vault, but <b>two .sdd/ levels</b> (workspace-level plans and contract design above, each repo's specs and ADRs below). The source of truth and its whole link graph are plain markdown, so a human reviewer and Claude&nbsp;Code open the identical files.</p>
+      </div>
+    </div>
+    <div class="twocol">
+      <div class="rec card">
+        <h3>The record — authored markdown &amp; links <span class="tag tag-code" style="font-size:9px;padding:.2em .4em">Harness-disciplined</span></h3>
+        <p>Epic plans and contract designs in the <b>workspace .sdd/</b>; specs, acceptance and per-change ADRs in <b>each repo's own .sdd/</b>; cross-service lessons promoted up from repo to workspace level — all gated, git-versioned, changed only through review. Documents correlate through links <em class="em">written into</em> the markdown, and because the repos are submodules of the one vault, <b>those links cross repo boundaries</b>. Each link is part of the record: reviewed in the PR, diffable, as auditable as the prose around it.</p>
+      </div>
+      <div class="idx card">
+        <h3>The index — derived backlinks &amp; graph <span class="tag tag-code" style="font-size:9px;padding:.2em .4em">Derived · deterministic</span></h3>
+        <p>Obsidian builds the backlink pane and the graph view <b>from those authored links</b> — nothing hand-kept, and it regenerates exactly from the record. Claude&nbsp;Code recovers the same neighbourhood by reading the links directly. Navigation is bidirectional, spans the whole workspace, and is a projection of recorded fact — never a model&#39;s recollection.</p>
+      </div>
+    </div>
+    <pre class="code"><span class="c"># workspace/   — ONE Obsidian vault · member repos are git submodules (pinned SHAs)</span>
+<span class="c">#   .sdd/                      ← WORKSPACE level · epic plans · contract design · lessons</span>
+<span class="c">#     epic-PAY-1842.md         plan + contract design — links DOWN into the repos</span>
+<span class="c">#   authoriser/                submodule @a1b2  (a member repo)</span>
+<span class="c">#     .sdd/                    ← REPO level · this repo's spec · acceptance · ADRs</span>
+<span class="c">#       spec.md  acceptance.md  ADR-217.md</span>
+<span class="c">#   checkout/   ledger/        …each its own submodule, each with its own .sdd/</span>
+
+<span class="c"># authoriser/.sdd/spec.md</span>
+Implements <span class="s">[PAY-1843](https://jira/PAY-1843)</span> · contract <span class="s">payments.authorise@3.3.0</span>
+See <span class="s">[acceptance](./acceptance.md)</span>
+<span class="c"># in-repo links are relative; refs outside this repo use a stable ID, never ../../</span>
+<span class="c"># backlinks are computed from these — never written by hand</span></pre>
+    <div class="pull">Forward links are the record; backlinks are the index derived from them — authored fact, deterministic projection, the same split drawn everywhere.</div>
+    <div class="note"><b>Three disciplines.</b> <b>Link direction:</b> workspace docs link <em>down</em> into repos, but a per-repo doc references anything outside its own tree only by stable ID (contract name, Jira key, registry URL) — a <span class="mono">../../</span> up-link resolves in the vault yet 404s in that repo&#39;s GitHub PR view. <b>Standard links, not <span class="mono">[[wikilinks]]</span>:</b> wikilinks are an Obsidian-only dialect that dies on GitHub and to the gate parsers, whereas plain markdown links resolve everywhere and Obsidian still graphs them. <b>Keep the model out:</b> a semantic / embedding index may sit on top for fuzzy discovery but never feeds a gate, and a peer-modelling layer (Honcho and its kind) is the wrong shape entirely — it rewrites itself in the background and strips provenance, so it stays in the walled-off personalisation tier, behind a GDPR conversation.</div>
+  </div>
+</section>
+
+<!-- ============ 05 WALKTHROUGH ============ -->
+<section id="cycle" class="wt">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">05</div>
+      <div class="sec-title-wrap">
+        <h2>One change, end to end</h2>
+        <p class="sec-sub">A producer-initiated contract change across two services: <b>the authoriser adds a <span class="mono">risk_band</span> so checkout can trigger step-up auth on high-risk payments</b>. It hits every hard edge — a breaking-change trap, the money-movement human gates on both services, and the audit trail at the end. The conductor scales this same shape to five repos or fifty.</p>
+      </div>
+    </div>
+
+    <div class="wt-shell" id="wt">
+      <div class="wt-top">
+        <div class="lhs">Risk-band step-up · <b>epic PAY-1842</b></div>
+        <div class="wt-ctrl">
+          <button class="btn" id="prev" aria-label="Previous step">◂ Prev</button>
+          <button class="btn play" id="play" aria-label="Play walkthrough">▶ Play</button>
+          <button class="btn" id="next" aria-label="Next step">Next ▸</button>
+        </div>
+      </div>
+
+      <div class="lanes" id="lanes" aria-hidden="true">
+        <!-- filled by JS -->
+      </div>
+
+      <div class="wt-body">
+        <div class="wt-meta">
+          <span class="wt-step-n" id="stepN">Step 01 / 12</span>
+          <span id="stepTags"></span>
+        </div>
+        <h3 class="wt-h" id="stepH"></h3>
+        <p class="wt-p" id="stepP"></p>
+        <div class="arts" id="stepArts"></div>
+      </div>
+
+      <div class="rail" id="rail" role="tablist" aria-label="Walkthrough steps"></div>
+    </div>
+
+    <div class="legend">
+      <span><i style="background:var(--code)"></i> Code decides</span>
+      <span><i style="background:var(--model);border:1px dashed var(--model)"></i> Model judges</span>
+      <span><i style="background:var(--human)"></i> Human owns</span>
+      <span style="color:var(--ink-faint)">Use <span class="kbd">←</span> <span class="kbd">→</span> to step</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 06 CLOSING ============ -->
+<section id="ledger" style="border-bottom:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">06</div>
+      <div class="sec-title-wrap">
+        <h2>What this buys, and what you can replay</h2>
+        <p class="sec-sub">Every decision in the system falls into one of three columns — and that division is the governance story, not a footnote to it.</p>
+      </div>
+    </div>
+
+    <div class="ledger">
+      <div class="led c">
+        <h3><span class="tag tag-code">Harness</span> owns the consequence</h3>
+        <ul>
+          <li>Phase gates &amp; the bounded loop</li>
+          <li>Survival-vote counting &amp; routing</li>
+          <li>Semver &amp; pinned-consumer checks</li>
+          <li>Blast-radius computation</li>
+          <li>Workspace dispatch &amp; reconciliation</li>
+        </ul>
+      </div>
+      <div class="led m">
+        <h3><span class="tag tag-model">Model</span> judges the residue</h3>
+        <ul>
+          <li>Drafting the plan, spec, tests, code</li>
+          <li>Per-criterion review &amp; the adversarial pass</li>
+          <li>One soundness verdict per contested refutation</li>
+          <li>“Is this diff semantically breaking?”</li>
+          <li>Optional semantic index (regenerable)</li>
+        </ul>
+      </div>
+      <div class="led h">
+        <h3><span class="tag tag-human">Human</span> owns the blast radius</h3>
+        <ul>
+          <li>Epic ratification, before fan-out</li>
+          <li>Contract-design sign-off</li>
+          <li>Money-movement &amp; PII gates</li>
+          <li>Escalation resolution</li>
+          <li>Promoting a lesson into the record</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="replay">
+      <div class="rl">▣ The audit line</div>
+      <p>From artifacts that were <b style="color:#7fd1c4">gated, not asserted</b>: each repo's <span class="q">.sdd/</span> history beside its diff; the workspace commit pinning every member SHA; each feature's decision log recording the exact catalog snapshot it was built against; the registry's version history; Jira's intent and the human sign-off. The replayable sentence reads — <span class="q">“checkout's step-up change was built against catalog snapshot v­X, authorise@3.3.0, additive per ADR-217, human sign-off by Y, contract tests green on a write-locked suite.”</span></p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>sdd-fleet — internal architecture &amp; governance</span>
+    <span>Deterministic harness · probabilistic generation · human accountability</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  // ----- icons -----
+  var I = {
+    jira:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h7l2-2 2 2h7M12 3v6M12 15v6"/></svg>',
+    repo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h11a2 2 0 0 1 2 2v16l-4-3-4 3V5a2 2 0 0 0-2-2H5z"/></svg>',
+    reg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="5" rx="1"/><rect x="3" y="11" width="18" height="5" rx="1"/><path d="M7 16v4"/></svg>',
+    cat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.6 7.6 11 16M16.4 7.6 13 16"/></svg>',
+    cons:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h11a2 2 0 0 1 2 2v16l-4-3-4 3V5a2 2 0 0 0-2-2H5z"/></svg>',
+    know:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><circle cx="5" cy="6" r="1.6"/><circle cx="19" cy="6" r="1.6"/><circle cx="6" cy="18" r="1.6"/><path d="M10.5 10.8 6.4 7M13.5 10.8 17.6 7M11 13.6 7 17"/></svg>'
+  };
+
+  var LANES = [
+    {id:'jira', name:'Jira', icon:I.jira},
+    {id:'producer', name:'Authoriser repo', icon:I.repo},
+    {id:'registry', name:'Contract registry', icon:I.reg},
+    {id:'catalog', name:'Catalog', icon:I.cat},
+    {id:'consumer', name:'Checkout repo', icon:I.cons},
+    {id:'knowledge', name:'Workspace', icon:I.know}
+  ];
+
+  // authority per active lane: code | model | human
+  var STEPS = [
+    {
+      h:'Epic planned in the workspace',
+      tags:['model','human'],
+      lanes:{jira:'human', catalog:'model', knowledge:'model'},
+      p:'The <b>epic-plan</b> command — run in the workspace, grounded in the catalog and the vault — interrogates the team and authors the epic at capability level: the dependency DAG, the <b>contract design</b>, and a producer + consumer story breakdown, into <span class="art-i">workspace/.sdd/</span>. The Jira epic holds the business intent; the detailed plan and its stories are written into Jira only after ratification. An advisory <b>catalog query</b> returns the consumers of <span class="art-i">payments.authorise</span>, and a <b>human confirms</b> the decomposition and an explicit depends-on.',
+      arts:['epic-plan → workspace/.sdd/','contract design + DAG','human-confirmed → PAY-1842']
+    },
+    {
+      h:'Epic ratified — before any story starts',
+      tags:['human'],
+      lanes:{jira:'human'},
+      p:'A human ratifies the decomposition <b>and the contract design</b> held in <span class="art-i">workspace/.sdd/</span>. <b>On sign-off, epic-plan materialises the plan into Jira</b> — writing the detailed epic and creating the producer and consumer <b>stories</b>, each seeded with high-level context for its repo. Once several repos build against a contract, changing it is expensive everywhere — so this is the most valuable gate in the whole change, and a hook makes ratification a precondition for fan-out. <span class="hot">The decisive human review is up front, on the contract shape, not the per-PR ones after.</span>',
+      arts:['ratification recorded','Jira epic + stories written','fan-out unlocked']
+    },
+    {
+      h:'Producer SPEC — and it starts out breaking',
+      tags:['model'],
+      lanes:{producer:'model'},
+      p:'In the authoriser repo, <b>jira-story PAY-1843</b> reads its Jira story for starting context and the structured detail from <span class="art-i">workspace/.sdd/</span> — the ratified contract design and a <b>pinned neighbourhood snapshot</b> — and refuses to proceed if the epic is not ratified. The architect drafts <span class="art-i">spec.md</span> and <span class="art-i">acceptance.md</span> into its gated <span class="art-i">.sdd/</span>. The first draft is casually breaking — it changes the existing <span class="art-i">decision</span> field from a string to an object.',
+      arts:['jira-story PAY-1843','.sdd/ spec.md (DRAFT)','neighbourhood snapshot pinned']
+    },
+    {
+      h:'Producer REVIEW — the breaking change is caught',
+      tags:['code','model'],
+      lanes:{producer:'model', catalog:'code'},
+      p:'The fan-out runs and the cross-service-impact concern fires. <b>The harness</b> does the computable part — a semver check flags the type change as breaking, and a reverse-edge lookup returns three consumers pinned to major&nbsp;v3. The <b>model</b> makes the one judgement: is this breaking beyond the version bump? It is. <span class="hot">Three blockers survive — one per pinned v3 consumer the change would break; FINALIZE refuses — before a line of code is written.</span>',
+      arts:['semver: BREAKING','3 consumers pinned @v3','FINALIZE refused']
+    },
+    {
+      h:'Re-spec as additive — with an ADR',
+      tags:['model'],
+      lanes:{producer:'model'},
+      p:'The architect leaves <span class="art-i">decision</span> alone, adds an <b>optional</b> <span class="art-i">risk_band</span> field, and bumps 3.2.0&nbsp;→&nbsp;3.3.0 (minor). The reasoning is recorded as an ADR: <em>chose additive over breaking to avoid a coordinated migration of three consumers.</em> REVIEW re-runs with zero blockers; FINALIZE passes.',
+      arts:['risk_band: optional','v3.2.0 → v3.3.0','ADR-217 recorded']
+    },
+    {
+      h:'Producer BUILD — and a gate forces honesty',
+      tags:['model','code'],
+      lanes:{producer:'code'},
+      p:'QA writes the failing suite first, including the new contract test; the coder implements. Deriving the band needs a call to <span class="art-i">fraud.score</span> — a <b>new consume edge</b>. The <b>dependency gate</b> sees a client call the descriptor doesn\'t declare and <b>refuses to raise the PR until <span class="art-i">service.yaml</span> is updated</b>. The descriptor edit is forced, not hoped for. The PR is raised; CHANGE&nbsp;REVIEW runs the engine on it and applies the counterfactual: would each test fail if reverted?',
+      arts:['tests-first (write-locked)','dependency gate: declare fraud.score','counterfactual passed']
+    },
+    {
+      h:'Producer HANDOFF → publish',
+      tags:['human','code'],
+      lanes:{producer:'human', registry:'code', catalog:'code', jira:'human'},
+      p:'CHANGE&nbsp;REVIEW passes, but the authoriser is classed <span class="art-i">money_movement</span> (and reaches three consumers), so the blast-radius rule <b>forces a human HANDOFF gate regardless of the clean machine verdict</b>. The PR owner approves and merges, and that sign-off lands in Jira. <span class="hot">Only on that human-approved merge does CI publish <span class="art-i">payments.authorise@3.3.0</span> to the registry and rebuild the catalog.</span> The authoriser→fraud.score edge and the new version now exist as <b>computed fact</b> — current by construction — and the consumer story it was blocking is released automatically.',
+      arts:['money_movement → human HANDOFF','sign-off → Jira','registry: authorise@3.3.0 · catalog rebuilt · consumer unblocked']
+    },
+    {
+      h:'Consumer SPEC — no manual sync',
+      tags:['model'],
+      lanes:{consumer:'model', catalog:'code'},
+      p:'Checkout\'s story was blocked on the dependency; the moment 3.3.0 publishes, the loop releases it. Its inherited neighbourhood snapshot <b>already reflects authorise@3.3.0</b> — that is the currency payoff, made real. The architect specs reading <span class="art-i">risk_band</span> and triggering step-up when it is HIGH.',
+      arts:['snapshot shows authorise@3.3.0','spec: step-up on HIGH','acceptance written']
+    },
+    {
+      h:'Consumer REVIEW — contract test registered and satisfiable',
+      tags:['code'],
+      lanes:{consumer:'code', registry:'code'},
+      p:'Checkout registers its <b>expectation</b> of the contract — the consumer-driven contract test — and code confirms it is satisfiable by the published version. The change sits in the payment flow, so the descriptor\'s <span class="art-i">money_movement</span> class flags that a human HANDOFF gate <b>will be required</b> — but that gate fires at HANDOFF, on the actual PR, not here at REVIEW.',
+      arts:['contract test: satisfiable','money_movement flagged','human HANDOFF pending']
+    },
+    {
+      h:'Consumer BUILD → HANDOFF',
+      tags:['model','code','human'],
+      lanes:{consumer:'human', registry:'code', jira:'human'},
+      p:'Tests-first again: implement step-up, contract test green, counterfactual. CHANGE&nbsp;REVIEW passes — then the pending money-movement gate fires: a human approves and merges at <b>HANDOFF</b>, and that sign-off lands in Jira. On the merge the catalog rebuilds, and checkout\'s edge now pins <span class="art-i">authorise@3.3.0</span>. Both halves of the change are in — each gated by a person at HANDOFF.',
+      arts:['human HANDOFF: approve + merge','sign-off → Jira','checkout pins @3.3.0']
+    },
+    {
+      h:'Projection back — and the lesson promoted',
+      tags:['code','human'],
+      lanes:{jira:'code', knowledge:'human'},
+      p:'As each story hits handoff, the machine signals are projected up: stories flip to Done, epic progress advances, and when both close the epic closes. The cross-service ADR is <b>promoted into the workspace vault</b> by a human-confirmed step and linked from the registry entry for <span class="art-i">authorise@3.3.0</span> — so the estate gets smarter through the gated loop, not the model.',
+      arts:['stories → Done','epic PAY-1842 closed','ADR-217 → workspace vault + registry']
+    },
+    {
+      h:'Replay — what the audit sees',
+      tags:['code'],
+      lanes:{producer:'code', registry:'code', catalog:'code', consumer:'code', jira:'code', knowledge:'code'},
+      p:'Everything reconstructs from artifacts that were <b>gated, not asserted</b>: each repo\'s <span class="art-i">.sdd/</span> history beside its diff, each decision log recording the catalog snapshot it built against, the registry\'s version history, and Jira\'s intent plus the human sign-offs at each HANDOFF. <span class="hot">Deterministic where it counts, model-judged only at the residue, human-owned at the blast radius.</span>',
+      arts:['.sdd/ × 2 repos','DECISIONS.md + snapshots','registry history + Jira sign-off']
+    }
+  ];
+
+  var TAGLABEL = {code:'Harness', model:'Model', human:'Human'};
+
+  // ----- build lanes -----
+  var lanesEl = document.getElementById('lanes');
+  LANES.forEach(function(l){
+    var d = document.createElement('div');
+    d.className = 'lane';
+    d.id = 'lane-'+l.id;
+    d.innerHTML = '<div class="ln">'+l.name+'</div><div class="puck">'+l.icon+'</div><div class="pulse"></div>';
+    lanesEl.appendChild(d);
+  });
+
+  // ----- build rail -----
+  var railEl = document.getElementById('rail');
+  STEPS.forEach(function(s,i){
+    var b = document.createElement('button');
+    b.className='step-chip';
+    b.setAttribute('role','tab');
+    b.setAttribute('aria-label','Step '+(i+1)+': '+s.h.replace(/<[^>]+>/g,''));
+    b.addEventListener('click',function(){ go(i); stop(); });
+    railEl.appendChild(b);
+  });
+
+  var stepN=document.getElementById('stepN'),
+      stepTags=document.getElementById('stepTags'),
+      stepH=document.getElementById('stepH'),
+      stepP=document.getElementById('stepP'),
+      stepArts=document.getElementById('stepArts');
+
+  var cur=0, timer=null;
+
+  function pad(n){return n<10?'0'+n:''+n;}
+
+  function render(){
+    var s=STEPS[cur];
+    stepN.textContent='Step '+pad(cur+1)+' / '+pad(STEPS.length);
+
+    // tags
+    stepTags.innerHTML='';
+    s.tags.forEach(function(t){
+      var sp=document.createElement('span');
+      sp.className='tag tag-'+t;
+      sp.textContent=TAGLABEL[t];
+      stepTags.appendChild(sp);
+    });
+
+    stepH.innerHTML=s.h;
+    stepP.innerHTML=styleInline(s.p);
+
+    stepArts.innerHTML='';
+    s.arts.forEach(function(a){
+      var d=document.createElement('div');
+      d.className='art';
+      d.innerHTML=a;
+      stepArts.appendChild(d);
+    });
+
+    // lanes
+    LANES.forEach(function(l){
+      var el=document.getElementById('lane-'+l.id);
+      el.className='lane';
+      if(s.lanes[l.id]){ el.classList.add('on','act-'+s.lanes[l.id]); }
+    });
+
+    // rail
+    Array.prototype.forEach.call(railEl.children,function(c,i){
+      c.className='step-chip'+(i<cur?' done':'')+(i===cur?' cur':'');
+    });
+
+    document.getElementById('prev').disabled = (cur===0);
+    document.getElementById('next').disabled = (cur===STEPS.length-1);
+  }
+
+  function styleInline(html){
+    // turn <span class="art-i">X</span> into inline mono chips
+    return html.replace(/<span class="art-i">([^<]+)<\/span>/g,
+      '<code style="font-family:\'JetBrains Mono\',monospace;font-size:.82em;background:var(--paper-2);border:1px solid var(--line-strong);border-radius:4px;padding:1px 5px">$1</code>');
+  }
+
+  function go(i){
+    cur=Math.max(0,Math.min(STEPS.length-1,i));
+    render();
+  }
+  function next(){ if(cur<STEPS.length-1){go(cur+1);} else {stop();} }
+  function prev(){ go(cur-1); }
+
+  // autoplay
+  var playBtn=document.getElementById('play');
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function play(){
+    if(reduce){ next(); return; }
+    if(cur===STEPS.length-1) go(0);
+    playBtn.innerHTML='❚❚ Pause';
+    playBtn.setAttribute('aria-label','Pause walkthrough');
+    timer=setInterval(function(){
+      if(cur>=STEPS.length-1){ stop(); return; }
+      next();
+    },4600);
+  }
+  function stop(){
+    if(timer){ clearInterval(timer); timer=null; }
+    playBtn.innerHTML='▶ Play';
+    playBtn.setAttribute('aria-label','Play walkthrough');
+  }
+  playBtn.addEventListener('click',function(){ timer?stop():play(); });
+  document.getElementById('next').addEventListener('click',function(){ next(); stop(); });
+  document.getElementById('prev').addEventListener('click',function(){ prev(); stop(); });
+
+  // keyboard
+  document.addEventListener('keydown',function(e){
+    if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+    if(e.key==='ArrowRight'){ next(); stop(); }
+    else if(e.key==='ArrowLeft'){ prev(); stop(); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
