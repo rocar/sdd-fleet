@@ -1,0 +1,103 @@
+{
+  "description": "sdd-fleet SDD gates: block ALL non-.sdd writes until the spec is FINALIZED (or, in the bug lane, all non-.sdd/non-tests writes until diagnosis.md is CONFIRMED + a reproducing test exists), guard the Bash escape hatch against write-to-source commands while source is locked, confine reviewers to .sdd/ during non-workflow REVIEW/CHANGE_REVIEW (workflow paths skip via .workflow-in-flight marker), block spec'ing a story whose governing epic is not ratified (estate fan-out gate — resolves the superproject via git, reads the epic's RATIFICATION.md; inert for standalone repos), validate spec STATUS + required sections, validate product backlog STATUS + structure, validate bug-lane diagnosis.md STATUS + required sections, require reviewer REVIEW.md entries on non-workflow paths, refuse Stop on failing tests while a feature is active (bounded: escalates to ESCALATION.md after 3 consecutive red stops), reap orphaned .workflow-in-flight markers on Stop, validate service.json against the descriptor schema on write, block a PROGRESS.md→HANDOFF transition whose diff introduces a cross-service edge not declared in service.json consumes[] (the source-scan dependency gate; inert for standalone/non-git repos), force a human gate at the PROGRESS.md->HANDOFF transition when a change's blast radius is risky (>= N transitive consumers, or money_movement/pii on a reached consumer or on the changed service's own descriptor — the blast-radius human gate; the non-forgeable approval path is a follow-up, so until then a risky change halts at HANDOFF, fail-closed), block a registry/<contract>/<semver>.json publish before the active feature reaches HANDOFF (the publish-ordering gate — publish is downstream of the human-approved handoff), and block a registry/<contract>/<semver>.json publish that violates any registered consumer expectation (the consumer-driven contract gate).",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/block-source-before-finalized.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/restrict-reviewer-writes.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/require-reproducing-test.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/epic-ratified-before-fanout.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dependency-gate.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/handoff-blast-radius-gate.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/block-publish-before-handoff.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/cdc-gate.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard-bash-writes.sh\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/validate-spec-status.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/validate-backlog-status.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/validate-diagnosis-status.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/validate-service-descriptor.sh\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "(sdd-fleet:)?(architect|coder|qa)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/check-review-written.sh\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/stop-tests.sh\"",
+            "timeout": 300
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/reap-stale-workflow-markers.sh\"",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: |
+          if command -v jq >/dev/null 2>&1; then
+            echo "jq already present: $(jq --version)"
+          elif [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y jq
+          else
+            brew install jq
+          fi
+      - name: Run test suites + smoke
+        run: bash scripts/run-tests.sh
+
+  # Runs on v* tag pushes (race-free: checking "latest tag" on a main push
+  # fails spuriously when the merge lands before the tag is pushed).
+  # The main≡latest-tag discipline itself lives in the release checklist;
+  # this job mechanically pins every published tag to its manifest version.
+  release-channel:
+    if: github.event_name == 'push' && github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert the tag matches plugin.json's version
+        run: |
+          version=$(jq -r .version .claude-plugin/plugin.json)
+          echo "plugin.json version: $version / pushed tag: $GITHUB_REF_NAME"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "release-channel drift: tag $GITHUB_REF_NAME but plugin.json says $version" >&2
+            exit 1
+          fi

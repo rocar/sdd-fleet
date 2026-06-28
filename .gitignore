@@ -1,0 +1,22 @@
+# Transient Claude Code session state
+.claude/scheduled_tasks.lock
+.claude/scheduled_tasks.json
+.claude/settings.local.json
+
+# SDD runtime workspace — this is per-target-project state, never the plugin's own
+.sdd/
+
+# OS / editor cruft
+.DS_Store
+*.swp
+
+# Python test cruft (from running the hook/smoke harnesses)
+.pytest_cache/
+__pycache__/
+
+# Node (only present transiently during SDK probes)
+node_modules/
+
+# Local scratch — LinkedIn card renders, throwaway API bodies, etc.
+.scratch/
+.playwright-mcp/

@@ -1,0 +1,23 @@
+{
+  "name": "sdd-fleet",
+  "version": "0.8.0",
+  "description": "Spec-driven multi-agent software house: architect, coder, qa, devops, scribe, and classifier subagents executing a hook-gated SPEC → REVIEW → FINALIZE → BUILD → CHANGE_REVIEW → HANDOFF state machine, with a human-ratified product planning tier and a reproducing-test-gated bug lane. Deterministic gates, bounded review cycles, first-class human escalation, configurable per-item review rosters and cycle budgets, a governed generate-then-pin lane for authoring novel workflows, and headless orchestrator support.",
+  "author": {
+    "name": "Ray Car",
+    "email": "raycar@gmail.com"
+  },
+  "homepage": "https://github.com/rocar/sdd-fleet",
+  "repository": "https://github.com/rocar/sdd-fleet",
+  "keywords": [
+    "spec-driven",
+    "multi-agent",
+    "workflows",
+    "code-review",
+    "tdd",
+    "orchestration",
+    "product-planning",
+    "bug-fix",
+    "troubleshooting"
+  ],
+  "license": "MIT"
+}

@@ -1,0 +1,26 @@
+{
+  "name": "sdd-fleet",
+  "owner": {
+    "name": "Ray Car",
+    "url": "https://github.com/rocar"
+  },
+  "plugins": [
+    {
+      "name": "sdd-fleet",
+      "source": "./",
+      "license": "MIT",
+      "category": "development",
+      "keywords": [
+        "spec-driven",
+        "multi-agent",
+        "workflows",
+        "code-review",
+        "tdd",
+        "orchestration",
+        "product-planning",
+        "bug-fix",
+        "troubleshooting"
+      ]
+    }
+  ]
+}

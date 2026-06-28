@@ -1,0 +1,16 @@
+# CODEOWNERS — required reviewers for sdd-fleet.
+# Syntax: <path pattern>  <owner>. Last matching pattern wins.
+# Code-owner review is only *enforced* once branch protection on `main` has
+# "Require review from Code Owners" enabled (and ≥1 required approval). Until
+# then this file documents ownership and auto-requests review on PRs.
+
+# Default owner for everything in the repo.
+*                       @rocar
+
+# Release & supply-chain surface — anything that ships or runs code deserves
+# the strictest scrutiny if/when collaborators are added.
+/.github/               @rocar
+/.claude-plugin/        @rocar
+/scripts/               @rocar
+/workflows/             @rocar
+/hooks/                 @rocar
