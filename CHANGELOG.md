@@ -14,39 +14,6 @@ migrated automatically. sdd-fleet assumes a single driver per working tree: one 
 session per worktree, with the `.sdd/ACTIVE` lock serializing acquisition within that worktree
 only (never across clones).
 
-## [Unreleased]
-
-### Added
-
-- **Real Jira REST adapter (`scripts/jira-adapter.sh`).** Backs the `SDD_JIRA_ADAPTER` seam
-  (`epic-materialise` + the conductor) with the Jira Cloud REST API (curl + API-token Basic
-  Auth) — deterministic and headless, the fit for the modelless seam (the Atlassian MCP server
-  is a model-facing JSON-RPC server and is deliberately *not* used as this backend). **Safe by
-  default:** with no config it emits an `unconfigured` signal and both callers soft-defer exactly
-  like "no adapter" (no network). `SDD_JIRA_DRYRUN=1` builds + records the real request bodies
-  without sending (preview + hermetic tests); `SDD_JIRA_LIVE=1` + `JIRA_*` creds/config does real
-  REST. A **single-source body-leak guard** (`scripts/jira-payload-leak-check.sh`, plus a
-  fail-closed structural check in the adapter) proves a story issue carries the id + a vault
-  pointer and **never** the plan/contract body — now verified against the real request body and
-  the full `epic-materialise → adapter` dry-run chain, not just the fixture argv.
-- **One-time legacy-link sweep (`scripts/link-sweep.sh`).** The `link-discipline` gate is
-  PreToolUse-only, so a `[[wikilink]]` or escaping `../` link already on disk is invisible until
-  its region is next written. This non-gate batch tool feeds every existing `.sdd/**/*.md` through
-  the **real hook** (single-source — zero rule drift; report-only) and lists what the gate would
-  block; run it once **per repo** when adopting an estate (exit 1 if any found, 0 when clean).
-
-### Changed
-
-- `epic-materialise` and the conductor now **soft-defer on an `unconfigured` adapter**, so the
-  now-present default `jira-adapter.sh` stays inert until creds are set (default behavior unchanged).
-
-### Compatibility
-
-- Additive; the seam CLI contract is unchanged. **Live conductor dispatch stays gated:** until
-  `consumes` edge-projection is wired (deferred), a live `jira-snapshot` returns no edges, so the
-  conductor must not be run live against a multi-dependency epic. Live Jira validation is a manual,
-  opt-in step; CI covers everything via dry-run + a stub `curl`.
-
 ## [1.0.0] — 2026-06-28
 
 **The plugin is renamed `build-fleet` → `sdd-fleet`, and ships its first multi-repo
@@ -76,6 +43,11 @@ before upgrading — mid-flight `.sdd/` state is not migrated.
 - **Workflow→scribe envelope field renamed `build_fleet_version` →
   `sdd_fleet_version`.** Write-only and internal (no consumer reads it), so there is
   no `.sdd/` migration; the persisted `SDD_SCHEMA: 1` stamp is unchanged.
+- **Jira REST adapter is additive; the seam CLI contract is unchanged.** **Live conductor
+  dispatch stays gated:** until `consumes` edge-projection is wired (deferred), a live
+  `jira-snapshot` returns no edges, so the conductor must not be run live against a
+  multi-dependency epic. Live Jira validation is a manual, opt-in step; CI covers
+  everything via dry-run + a stub `curl`.
 
 ### Added
 
@@ -104,6 +76,24 @@ before upgrading — mid-flight `.sdd/` state is not migrated.
 - **Link-discipline gate.** Blocks `[[wikilinks]]` in `.sdd/` markdown at every tier
   and relative links that escape a repo-level `.sdd/`; the workspace vault tier is
   exempt so its down-links into submodules stay legal.
+- **Real Jira REST adapter (`scripts/jira-adapter.sh`).** Backs the `SDD_JIRA_ADAPTER`
+  seam (`epic-materialise` + the conductor) with the Jira Cloud REST API (curl +
+  API-token Basic Auth) — deterministic and headless, the fit for the modelless seam
+  (the Atlassian MCP server is a model-facing JSON-RPC server and is deliberately *not*
+  used as this backend). **Safe by default:** with no config it emits an `unconfigured`
+  signal and both callers soft-defer exactly like "no adapter" (no network).
+  `SDD_JIRA_DRYRUN=1` builds + records the real request bodies without sending (preview +
+  hermetic tests); `SDD_JIRA_LIVE=1` + `JIRA_*` creds/config does real REST. A
+  **single-source body-leak guard** (`scripts/jira-payload-leak-check.sh`, plus a
+  fail-closed structural check in the adapter) proves a story issue carries the id + a
+  vault pointer and **never** the plan/contract body — verified against the real request
+  body and the full `epic-materialise → adapter` dry-run chain, not just the fixture argv.
+- **One-time legacy-link sweep (`scripts/link-sweep.sh`).** The `link-discipline` gate is
+  PreToolUse-only, so a `[[wikilink]]` or escaping `../` link already on disk is invisible
+  until its region is next written. This non-gate batch tool feeds every existing
+  `.sdd/**/*.md` through the **real hook** (single-source — zero rule drift; report-only)
+  and lists what the gate would block; run it once **per repo** when adopting an estate
+  (exit 1 if any found, 0 when clean).
 
 ### Changed
 
@@ -119,6 +109,13 @@ before upgrading — mid-flight `.sdd/` state is not migrated.
   (`epic-ratified-before-fanout`, `handoff-blast-radius-gate`) now record a counted
   FAIL when their git-submodule fixtures can't run, instead of printing a SKIP that
   reads as a clean pass.
+- **`epic-materialise` and the conductor soft-defer on an `unconfigured` adapter**, so
+  the now-present default `jira-adapter.sh` stays inert until creds are set (default
+  behavior unchanged).
+- **Documented the harness-wide chokepoint-evasion limit across all `.sdd` path gates**
+  (`dependency-gate`, `handoff-blast-radius-gate`, `link-discipline` alike): each is
+  fail-closed on what passes the `Write|Edit` chokepoint and fail-open on a write that
+  skips it — a by-design boundary, not a gate-layer bug.
 
 ### Removed
 
