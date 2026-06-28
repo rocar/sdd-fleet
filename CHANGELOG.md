@@ -51,9 +51,13 @@ before upgrading — mid-flight `.sdd/` state is not migrated.
   into a workspace vault; `/sdd-fleet:epic-ratify` is a human gate
   (`disable-model-invocation`, bare = dry-run) that pins a plan digest to
   `RATIFICATION.md` and deterministically materialises the epic + one Jira story per
-  node. A **modelless conductor** reconciler dispatches ready stories across the
-  estate from live Jira + registry state. An `epic-ratified-before-fanout` hook
-  blocks spec'ing a story whose governing epic is not ratified.
+  node. A **modelless conductor** reconciler (`conductor-tick.sh` + the pure-set-logic
+  `ready-frontier.sh` + `conductor-loop.sh`) dispatches ready stories across the estate
+  from live Jira + registry state, behind a `jira-snapshot`/`jira-transition` adapter
+  seam. Its modelless + creation-free guarantee is **gated by committed tests** (a
+  re-derive-from-source determinism lint plus frontier-subset / count-invariant /
+  crash-idempotency fixtures), not merely asserted. An `epic-ratified-before-fanout`
+  hook blocks spec'ing a story whose governing epic is not ratified.
 - **Cross-repo contract governance.** A human-owned `service.json` descriptor
   (gated by `validate-service-descriptor`), an append-only contract **registry**, a
   **derived** service **catalog** (`catalog-derive.sh`), and deterministic
@@ -78,6 +82,10 @@ before upgrading — mid-flight `.sdd/` state is not migrated.
   new-feature / triage / review / finalize / build / reproduce / diagnose / fix /
   verify / handoff commands), alongside the product, bug-lane, workspace, and
   authoring commands — **15 commands** in total.
+- **Test harness fails loud, never silent-skips.** The two cross-level suites
+  (`epic-ratified-before-fanout`, `handoff-blast-radius-gate`) now record a counted
+  FAIL when their git-submodule fixtures can't run, instead of printing a SKIP that
+  reads as a clean pass.
 
 ### Removed
 

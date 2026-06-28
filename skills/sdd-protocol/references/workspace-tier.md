@@ -170,8 +170,15 @@ The conductor is a **level-triggered reconciler, scripts only** — no agent, no
 command, no model. It is the estate-wide generalization of `next-feature.sh`'s
 *resolve → signal → let the dispatcher start the work* pattern. One **tick** is a pure
 function of live state; the **loop** is the harness re-invoking the tick (the clock is
-injected via `--now`; no `Date`, no randomness). Full mechanics live in the conductor's
-own sub-plan; this reference fixes the **invariants** it must satisfy:
+injected via `--now`; no `Date`, no randomness). It is **built** as `scripts/conductor-tick.sh`
+(one tick), `scripts/ready-frontier.sh` (the pure set-logic core), and `scripts/conductor-loop.sh`
+(the per-epic sweep), and its modelless/creation-free guarantee is **gated by committed,
+running tests**, not asserted: `conductor-modelless-lint.test.sh` (a re-derive-from-source
+lint — no `date`/`$RANDOM`, `--now` injected, no `jira-story`/`create-*`, no `plan.md`/
+`contracts.md` read) plus `ready-frontier.test.sh` (frontier-subset + completeness, two-sided)
+and `conductor-tick.test.sh` (count-invariant, crash-idempotency, re-read-not-recorded-flag,
+level-triggered progress, the lease, and a creation-free runtime lock on the adapter log). It
+satisfies these invariants:
 
 - **Reads ground truth fresh every tick** — the Jira story set (status + projected edges)
   and the registry's published-contract set. No cache, no event subscription: a story
@@ -186,8 +193,36 @@ own sub-plan; this reference fixes the **invariants** it must satisfy:
 - **Holds no private mutable state** — `DISPATCHED` lives in Jira and is re-read each tick;
   a crash recovers forward-only from real status (idempotent re-signal, never a double).
 - **One conductor per epic** — an atomic noclobber lease (`_epic/<slug>/.conductor.lock`,
-  the `acquire-active.sh` primitive: owner metadata, `--now` injected, no auto-expiry). The
-  lease is **separate runtime state** — the epic list is never folded into it.
+  the `lease_acquire`/`lease_release` helpers in `_lib.sh`: the `set -C` noclobber idiom
+  with owner metadata, `--now` injected, no auto-expiry, **same-owner re-entrant** for
+  crash recovery). The lease is **separate runtime state** — the epic list is never folded
+  into it. **Dispatch-once does not depend on the lease**: it comes from the NOT_STARTED-only
+  frontier plus the idempotent transition, so even two conductors on one epic cannot
+  double-dispatch; the lease is coordination only.
+
+**Adapter seam (read + transition).** The conductor reaches Jira behind the
+`SDD_JIRA_ADAPTER` seam (the same env-var seam as `epic-materialise`), adding two verbs to
+the existing write-only `create-epic`/`create-story`:
+
+- `jira-snapshot --epic-key <k> --now <iso>` → `{"epic":"<k>","stories":[{"id","key","status","consumes":["<c>@<major>"],"repo"}]}` — the live story set; the conductor reads `status` + the projected `consumes` edges **only from here**, never from `plan.md`.
+- `jira-transition --epic-key <k> --story <id> --to DISPATCHED --now <iso>` → `{"status":"transitioned"|"noop"}` — **idempotent** (a no-op when already dispatched).
+
+**Stated limits.**
+
+- *Adapter modelless-ness is out of the source lint's reach* (the adapter is behind the
+  seam, not shipped) — bounded instead by the **creation-free runtime lock**: the tick's
+  adapter-call log is asserted to contain only `jira-snapshot` + `jira-transition`, never a
+  `create-*`.
+- *No lease auto-expiry* (inherited from the `acquire-active` posture): a crash by a
+  **different-owner** conductor strands dispatch until a human removes
+  `_epic/<slug>/.conductor.lock`; a **same-owner** restart recovers automatically.
+- *The cross-level dispatch token is not planted yet* — a dispatch is observable via the
+  `SDD_FLEET_DISPATCH` signal plus the Jira status advance; the fanout gate today re-derives
+  ratification from the superproject + `RATIFICATION.md` rather than consuming a
+  conductor-planted token. Planting a token is deferred to that hook's mechanism.
+- *Real contract-edge projection is deferred* — `epic-materialise` does not yet stamp
+  `consumes` onto Jira stories; the conductor reads whatever the adapter projects (the test
+  fixture supplies it), with `plan.md` authoritative on any conflict.
 
 A dispatched story is picked up by the per-repo `/sdd-fleet:jira-story <id>` machine, which
 reads its Jira story as starting context, pulls structured detail from the vault, and runs

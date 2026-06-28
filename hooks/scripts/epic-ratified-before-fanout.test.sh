@@ -114,7 +114,9 @@ if [ "$git_ok" -eq 1 ]; then
   if [ "$rc" -eq 0 ]; then pass=$((pass+1)); printf 'ok   %-40s rc=0\n' "git-missing-is-inert"
   else fail=$((fail+1)); printf 'FAIL %-40s want=0 got=%s\n' "git-missing-is-inert" "$rc"; fi
 else
-  printf 'SKIP git-submodule fixtures (git unavailable or local-path submodules disabled)\n'
+  # A SKIP here reads as not-failed and the cross-level proof silently never runs.
+  # Fail LOUDLY instead — this suite's whole point is the superproject fan-out gate.
+  fail=$((fail+1)); printf 'FAIL %-40s %s\n' "git-submodule-fixtures-unrunnable" "the cross-level proof needs git + a working superproject (install git / enable local-path submodules); refusing to pass with the fixtures un-run"
 fi
 
 echo "-----"

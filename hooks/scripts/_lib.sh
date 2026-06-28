@@ -179,3 +179,68 @@ path_in_tests() {
     *) return 1 ;;
   esac
 }
+
+# --- Cross-repo contract registry: the "published" predicate (Layer 3) --------
+# Return 0 iff contract token <contract>@<major> is published NOW: a file
+# <registry>/<contract>/<semver>.json exists whose major equals the token's
+# major. This is the SINGLE shared home of the predicate the dependency gate
+# (dependency-check.sh) and the conductor's ready-frontier both key on — they
+# must never disagree about "is C published?". Pure filesystem read, no clock.
+# Usage: published_has <contract>@<major> <registry-dir>
+published_has() {
+  local tok="$1" registry="$2"
+  local cn="${tok%@*}" mj="${tok##*@}"
+  [ -n "$cn" ] && [ -n "$mj" ] || return 1
+  [ -d "$registry/$cn" ] || return 1
+  local vf ver
+  for vf in "$registry/$cn"/*.json; do
+    [ -f "$vf" ] || continue
+    ver="$(basename "$vf" .json)"
+    [ "${ver%%.*}" = "$mj" ] && return 0
+  done
+  return 1
+}
+
+# --- Conductor lease: a re-entrant, no-auto-expiry noclobber lock (Layer 3) ---
+# Separate runtime state from .sdd/ACTIVE (the conductor lease is NEVER folded
+# into the epic list). Mirrors acquire-active.sh's atomic `set -C` create but is
+# path-parameterised and SAME-OWNER RE-ENTRANT so a crashed conductor recovers
+# forward on its next tick. No auto-expiry: staleness across DIFFERENT owners is
+# a human's call (release the lock), identical posture to acquire-active.sh.
+
+# Echo a "KEY: value" field from a lease lock file, or empty.
+# Usage: lease_field <lockpath> <key>
+lease_field() {
+  [ -f "$1" ] || return 0
+  { grep -m1 "^$2:" "$1" 2>/dev/null || true; } \
+    | sed -E "s/^$2:[[:space:]]*//" | tr -d '\r' | sed -E 's/[[:space:]]+$//'
+}
+
+# Acquire <lockpath> for <owner> stamped <now>. Return 0 if held by us (fresh
+# acquire OR re-entrant same-owner), 1 if held by a DIFFERENT owner.
+# Usage: lease_acquire <lockpath> <owner> <now>
+lease_acquire() {
+  local lock="$1" owner="$2" now="$3"
+  mkdir -p "$(dirname "$lock")" 2>/dev/null || true
+  # Atomic noclobber create — exactly one concurrent caller wins.
+  if ( set -C; printf 'OWNER: %s\nACQUIRED: %s\n' "$owner" "$now" > "$lock" ) 2>/dev/null; then
+    return 0
+  fi
+  # Lock exists → ours (re-entrant crash recovery) only if the owner matches.
+  [ "$(lease_field "$lock" OWNER)" = "$owner" ] && return 0
+  return 1
+}
+
+# Release <lockpath> if it is ours (or ownerless). Return 0 on release/absent,
+# 1 if it belongs to a different owner (never steal another conductor's lock).
+# Usage: lease_release <lockpath> <owner>
+lease_release() {
+  local lock="$1" owner="$2" cur
+  [ -f "$lock" ] || return 0
+  cur="$(lease_field "$lock" OWNER)"
+  if [ -z "$cur" ] || [ "$cur" = "$owner" ]; then
+    rm -f "$lock"
+    return 0
+  fi
+  return 1
+}
