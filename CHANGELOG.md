@@ -14,6 +14,34 @@ migrated automatically. sdd-fleet assumes a single driver per working tree: one 
 session per worktree, with the `.sdd/ACTIVE` lock serializing acquisition within that worktree
 only (never across clones).
 
+## [Unreleased]
+
+### Added
+
+- **Real Jira REST adapter (`scripts/jira-adapter.sh`).** Backs the `SDD_JIRA_ADAPTER` seam
+  (`epic-materialise` + the conductor) with the Jira Cloud REST API (curl + API-token Basic
+  Auth) — deterministic and headless, the fit for the modelless seam (the Atlassian MCP server
+  is a model-facing JSON-RPC server and is deliberately *not* used as this backend). **Safe by
+  default:** with no config it emits an `unconfigured` signal and both callers soft-defer exactly
+  like "no adapter" (no network). `SDD_JIRA_DRYRUN=1` builds + records the real request bodies
+  without sending (preview + hermetic tests); `SDD_JIRA_LIVE=1` + `JIRA_*` creds/config does real
+  REST. A **single-source body-leak guard** (`scripts/jira-payload-leak-check.sh`, plus a
+  fail-closed structural check in the adapter) proves a story issue carries the id + a vault
+  pointer and **never** the plan/contract body — now verified against the real request body and
+  the full `epic-materialise → adapter` dry-run chain, not just the fixture argv.
+
+### Changed
+
+- `epic-materialise` and the conductor now **soft-defer on an `unconfigured` adapter**, so the
+  now-present default `jira-adapter.sh` stays inert until creds are set (default behavior unchanged).
+
+### Compatibility
+
+- Additive; the seam CLI contract is unchanged. **Live conductor dispatch stays gated:** until
+  `consumes` edge-projection is wired (deferred), a live `jira-snapshot` returns no edges, so the
+  conductor must not be run live against a multi-dependency epic. Live Jira validation is a manual,
+  opt-in step; CI covers everything via dry-run + a stub `curl`.
+
 ## [1.0.0] — 2026-06-28
 
 **The plugin is renamed `build-fleet` → `sdd-fleet`, and ships its first multi-repo

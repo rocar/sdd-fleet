@@ -85,6 +85,11 @@ fi
 trap 'lease_release "$lock" "$owner" >/dev/null 2>&1 || true' EXIT
 
 snap="$(bash "$ADAPTER" jira-snapshot --epic-key "$key" --now "$now" 2>/dev/null || true)"
+# An adapter present but unconfigured (no creds) soft-defers like no adapter (the EXIT
+# trap releases the lease). Keeps the default jira-adapter.sh inert until creds are set.
+case "$snap" in
+  *'"status":"unconfigured"'*) printf '{"status":"deferred","reason":"jira-adapter-unconfigured","epic":"%s"}\n' "$slug"; exit 0 ;;
+esac
 if [ -z "$snap" ] || ! printf '%s' "$snap" | jq -e '.stories' >/dev/null 2>&1; then
   printf '{"status":"snapshot-error","epic":"%s"}\n' "$slug"
   exit 1

@@ -207,6 +207,21 @@ the existing write-only `create-epic`/`create-story`:
 - `jira-snapshot --epic-key <k> --now <iso>` → `{"epic":"<k>","stories":[{"id","key","status","consumes":["<c>@<major>"],"repo"}]}` — the live story set; the conductor reads `status` + the projected `consumes` edges **only from here**, never from `plan.md`.
 - `jira-transition --epic-key <k> --story <id> --to DISPATCHED --now <iso>` → `{"status":"transitioned"|"noop"}` — **idempotent** (a no-op when already dispatched).
 
+**A real backend ships: `scripts/jira-adapter.sh` (Jira Cloud REST, not MCP).** The seam is a
+deterministic CLI invoked by *modelless* shell, so it is backed by the **Jira REST API** (curl +
+API-token Basic Auth) — not the Atlassian MCP server, which is a model-facing JSON-RPC server an
+MCP client speaks (the conductor has no model to speak it). It is **safe by default**: with no
+config it emits an `unconfigured` signal and both callers soft-defer exactly like "no adapter"
+(no network). `SDD_JIRA_DRYRUN=1` builds + records the real request bodies without sending (preview
++ hermetic tests); `SDD_JIRA_LIVE=1` + `JIRA_BASE_URL`/`JIRA_EMAIL`/`JIRA_API_TOKEN`/
+`JIRA_PROJECT_KEY` (+ `JIRA_STATUS_NOTSTARTED`/`JIRA_STATUS_DISPATCHED` status mapping) does real
+REST. A **single-source body-leak guard** (`jira-payload-leak-check.sh` in tests; a fail-closed
+structural check in the adapter) proves a story issue carries the id + a vault pointer and **never**
+the plan/contract body — verified against the real request body, not just the fixture argv.
+*Live validation against a real instance is a manual, opt-in step; CI covers everything via dry-run
++ a stub `curl`.* The Atlassian MCP server remains useful for **interactive** human Jira work in a
+Claude session (a separate, optional registration) — just not as this deterministic seam's backend.
+
 **Stated limits.**
 
 - *Adapter modelless-ness is out of the source lint's reach* (the adapter is behind the
@@ -220,9 +235,16 @@ the existing write-only `create-epic`/`create-story`:
   `SDD_FLEET_DISPATCH` signal plus the Jira status advance; the fanout gate today re-derives
   ratification from the superproject + `RATIFICATION.md` rather than consuming a
   conductor-planted token. Planting a token is deferred to that hook's mechanism.
-- *Real contract-edge projection is deferred* — `epic-materialise` does not yet stamp
-  `consumes` onto Jira stories; the conductor reads whatever the adapter projects (the test
-  fixture supplies it), with `plan.md` authoritative on any conflict.
+- *Real contract-edge projection is deferred → live conductor dispatch is NOT production-safe
+  yet.* `epic-materialise` does not stamp each story's `consumes` onto its Jira issue, so the
+  live `jira-snapshot` returns `consumes: []` (it reads an `sdd-consumes` label nothing writes
+  today), and `ready-frontier` treats empty consumes as "no deps → ready". A live conductor would
+  therefore dispatch **every** story immediately, ignoring the DAG. The REST adapter is
+  forward-compatible (it already reads `sdd-consumes` and will work once materialise passes
+  `--consumes`), but **do not run the conductor live against a multi-dependency epic until
+  edge-projection lands.** This is the gating prerequisite for live dispatch. (Dry-run and the
+  per-story create/transition path are unaffected; the test fixture supplies edges, `plan.md`
+  authoritative on any conflict.)
 
 A dispatched story is picked up by the per-repo `/sdd-fleet:jira-story <id>` machine, which
 reads its Jira story as starting context, pulls structured detail from the vault, and runs

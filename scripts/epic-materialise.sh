@@ -13,8 +13,9 @@
 # --now is injected by the caller; the script reads no clock.
 #
 # THE JIRA ADAPTER SEAM. All Jira I/O goes through an adapter resolved from $SDD_JIRA_ADAPTER
-# (default: scripts/jira-adapter.sh, not shipped in this slice — the real MCP/CLI backend
-# slots in behind the seam later). The adapter CLI contract:
+# (default: scripts/jira-adapter.sh — a real Jira REST adapter now SHIPS there; it is inert
+# (defers) until SDD_JIRA_DRYRUN=1 (preview/test) or SDD_JIRA_LIVE=1 + JIRA_* creds enable it,
+# so this default is safe). The adapter CLI contract:
 #   <adapter> create-epic  --slug <epic-slug> --now <iso>                         -> stdout: "JIRA_KEY: <key>"
 #   <adapter> create-story --epic-key <key> --story <slug> --repo <repo> --now <iso> -> stdout: "JIRA_KEY: <key>"
 # Exit 0 + a JIRA_KEY line on success; non-zero on failure. With no configured adapter the
@@ -60,7 +61,13 @@ ADAPTER="${SDD_JIRA_ADAPTER:-$DIR/jira-adapter.sh}"
 # consume edges are projected onto the Jira story by the adapter, not parsed here.
 read_key() { sed -n 's/^JIRA_KEY:[[:space:]]*//p' | head -n1; }
 
-epic_key=$(bash "$ADAPTER" create-epic --slug "$SLUG" --now "$NOW" 2>/dev/null | read_key)
+epic_out=$(bash "$ADAPTER" create-epic --slug "$SLUG" --now "$NOW" 2>/dev/null)
+# An adapter present but unconfigured (no creds) soft-defers, exactly like no adapter —
+# so dropping the default jira-adapter.sh in place never errors or hits the network.
+case "$epic_out" in
+  *'"status":"unconfigured"'*) printf '{"status":"deferred","reason":"jira-adapter-unconfigured","epic":"%s"}\n' "$SLUG"; exit 0 ;;
+esac
+epic_key=$(printf '%s' "$epic_out" | read_key)
 [ -n "$epic_key" ] || { printf '{"status":"adapter-error","epic":"%s","reason":"create-epic-failed"}\n' "$SLUG"; exit 1; }
 
 stories=$(awk '

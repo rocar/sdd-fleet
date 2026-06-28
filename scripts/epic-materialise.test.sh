@@ -49,6 +49,9 @@ mkrat() {
 
 run_adapter() { local p="$1"; shift; : > "$work/.jlog"; out=$( cd "$p" && SDD_JIRA_ADAPTER="$fake" FAKE_JIRA_LOG="$work/.jlog" bash "$SCRIPT" "$@" 2>"$work/.err" ); rc=$?; }
 run_noadapter() { local p="$1"; shift; out=$( cd "$p" && SDD_JIRA_ADAPTER="$work/does-not-exist.sh" bash "$SCRIPT" "$@" 2>"$work/.err" ); rc=$?; }
+# the REAL adapter present but unconfigured (no creds, no dry-run) -> it emits an
+# "unconfigured" signal; materialise must soft-defer (not adapter-error).
+run_unconfigured() { local p="$1"; shift; out=$( cd "$p" && SDD_JIRA_ADAPTER="$DIR/jira-adapter.sh" bash "$SCRIPT" "$@" 2>"$work/.err" ); rc=$?; }
 
 # --- happy path: materialise via the adapter ---
 p=$(mkrat happy)
@@ -84,6 +87,12 @@ run_noadapter "$p" ep --now "$NOW"
 expect "no-adapter-defers" 0 '"status":"deferred"'
 [ -f "$p/.sdd/_epic/ep/JIRA_LINK.md" ] && no "deferred-no-jira-link" "JIRA_LINK.md should not exist" || ok "deferred-no-jira-link"
 
+# --- unconfigured adapter (present, no creds/dry-run) soft-defers, never errors ---
+p=$(mkrat unconf)
+run_unconfigured "$p" ep --now "$NOW"
+expect "unconfigured-adapter-defers" 0 '"status":"deferred"'
+[ -f "$p/.sdd/_epic/ep/JIRA_LINK.md" ] && no "unconfigured-no-jira-link" "JIRA_LINK.md should not exist" || ok "unconfigured-no-jira-link"
+
 # --- body-leak lock: the structured plan body (DAG / contract design) must NOT reach the
 # story payload — only identifiers (id/repo/epic-key) do. Sentinels in the plan/contract
 # bodies must be absent from everything sent to the adapter. A positive control (the story
@@ -93,9 +102,10 @@ printf 'EPIC: ep\n\n## Stories\n- id: storyA\n  repo: member-a\n\n## Dependency 
 printf 'EPIC: ep\n\n## Contracts\n### thing\n- kind: openapi\n- interface: CONTRACTBODY_SENTINEL_must_not_reach_jira\n' > "$e/contracts.md"
 printf 'RATIFIED: %s\nPLAN_DIGEST: x\n' "$NOW" > "$e/RATIFICATION.md"
 run_adapter "$p" ep --now "$NOW"
-grep -q 'create-story .*--story storyA' "$work/.jlog" && pc=1 || pc=0
-if [ "$pc" -eq 1 ] && ! grep -q 'SENTINEL' "$work/.jlog"; then ok "no-plan-body-in-payload"
-else no "no-plan-body-in-payload" "pos-control=$pc log=$(cat "$work/.jlog")"; fi
+# Single-source guard (scripts/jira-payload-leak-check.sh), applied here at the script->adapter
+# argv boundary and again at the adapter->Jira payload boundary in jira-adapter.test.sh.
+if bash "$DIR/jira-payload-leak-check.sh" --require 'create-story' --require 'storyA' --forbid SENTINEL < "$work/.jlog"; then ok "no-plan-body-in-payload (single-source guard)"
+else no "no-plan-body-in-payload" "log=$(cat "$work/.jlog")"; fi
 
 # --- usage: missing --now / missing slug ---
 p=$(mkrat usage)

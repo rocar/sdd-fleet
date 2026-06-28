@@ -141,6 +141,12 @@ p7="$work/noadapter"; mk_epic "$p7" "$STATE_BASE"
 out="$( (cd "$p7" && SDD_JIRA_ADAPTER="$p7/nope.sh" bash "$TICK" "$SLUG" --now "$NOW") 2>/dev/null )"
 eq "deferred-no-adapter"  "$(printf '%s' "$(sj "$out")" | jq -r '.status')" "deferred"
 
+# the REAL adapter present but unconfigured (no creds) -> the tick must soft-defer
+p7b="$work/unconf"; mk_epic "$p7b" "$STATE_BASE"
+out="$( (cd "$p7b" && SDD_JIRA_ADAPTER="$DIR/jira-adapter.sh" bash "$TICK" "$SLUG" --now "$NOW") 2>/dev/null )"
+eq "deferred-unconfigured-adapter" "$(printf '%s' "$(sj "$out")" | jq -r '.status')" "deferred"
+eq "unconfigured-no-transition"    "$(countlines 'jira-transition' "$p7b/.jlog")" "0"
+
 ( cd "$p" && bash "$TICK" "$SLUG" ) >/dev/null 2>&1; rc=$?
 eq "missing-now-rejected" "$rc" "2"
 ( cd "$p" && bash "$TICK" "../escape" --now "$NOW" ) >/dev/null 2>&1; rc=$?
