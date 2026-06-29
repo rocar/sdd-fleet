@@ -1,7 +1,7 @@
 # sdd-fleet
 
 A spec-driven multi-agent software house, packaged as a Claude Code plugin.
-**v1.0.0**
+**v1.1.0**
 
 sdd-fleet turns Claude Code into a disciplined software house. A fleet of role
 subagents drives every change through a deterministic state machine —

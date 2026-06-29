@@ -14,7 +14,7 @@ migrated automatically. sdd-fleet assumes a single driver per working tree: one 
 session per worktree, with the `.sdd/ACTIVE` lock serializing acquisition within that worktree
 only (never across clones).
 
-## [Unreleased]
+## [1.1.0] — 2026-06-29
 
 **Design-conformance hardening** — the Layer-2 oracle gates and the review engine's
 determinism guarantees move from command/agent prose into code, matching
