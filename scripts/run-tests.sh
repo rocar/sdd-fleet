@@ -12,6 +12,17 @@ for t in "$root"/hooks/scripts/*.test.sh "$root"/scripts/*.test.sh; do
   echo "── $t"
   bash "$t" || fail=$((fail+1))
 done
+# node --check every committed workflow — a broken workflow is caught by the suite, not
+# only at pin-time / by hand (audit G3). Skips cleanly if node is absent.
+if command -v node >/dev/null 2>&1; then
+  echo "── node --check workflows"
+  total=$((total+1)); ok=1
+  for w in "$root"/workflows/*.js; do
+    [ -f "$w" ] || continue
+    node --check "$w" 2>&1 || { echo "FAIL node --check $w"; ok=0; }
+  done
+  [ "$ok" -eq 1 ] || fail=$((fail+1))
+fi
 echo "── smoke"
 total=$((total+1)); bash "$root/docs/smoke/smoke.sh" || fail=$((fail+1))
 echo "suites: $total, failed: $fail"

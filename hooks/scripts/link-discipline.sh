@@ -106,14 +106,30 @@ if [ -z "$super" ] && [ -f .gitmodules ]; then
 fi
 # Member (super non-empty) or standalone (super empty, no .gitmodules): the .sdd/ doc is
 # repo-level — its links must resolve inside this repo's own tree.
-links=$(printf '%s' "$content" | grep -Eo '\]\([^)]*\)' || true)
 escapes=""
+# Inline links — ](target) — strip '](' … ')' and an optional "title".
+inline=$(printf '%s' "$content" | grep -Eo '\]\([^)]*\)' || true)
 while IFS= read -r raw; do
   [ -n "$raw" ] || continue
-  t=${raw#\]\(}; t=${t%\)}; t=${t%% *}        # strip '](' … ')' and an optional "title"
+  t=${raw#\]\(}; t=${t%\)}; t=${t%% *}
   if link_escapes "$file" "$t"; then escapes="${escapes} ${t}"; fi
 done <<EOF
-$links
+$inline
+EOF
+# Reference-style link definitions — [label]: target "title" (CommonMark allows up to
+# 3 leading spaces and a <…> destination). These carry a relative target and pass this
+# same chokepoint, so a "[r]: ../../../x.md" escapes exactly as the inline form would
+# (audit F1). Take the token after ']:', strip an optional title and a <…> wrapper.
+refdefs=$(printf '%s' "$content" | grep -E '^[[:space:]]{0,3}\[[^]]+\]:[[:space:]]*[^[:space:]]' || true)
+while IFS= read -r raw; do
+  [ -n "$raw" ] || continue
+  t=${raw#*]:}                                 # everything after ']:'
+  t="${t#"${t%%[![:space:]]*}"}"               # ltrim leading whitespace
+  t=${t%% *}                                   # drop an optional " title"
+  t=${t#<}; t=${t%>}                           # strip an angle-bracket destination wrapper
+  if link_escapes "$file" "$t"; then escapes="${escapes} ${t}"; fi
+done <<EOF
+$refdefs
 EOF
 if [ -n "$escapes" ]; then
   echo "sdd-fleet: link-discipline — relative link escapes the repo root in $file:$escapes" >&2

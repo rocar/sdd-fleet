@@ -114,6 +114,13 @@ else
   fail=$((fail+1)); printf 'FAIL %-42s want=2+msg got=%s (%s)\n' "block-message-names-role+cycle" "$rc" "$err"
 fi
 
+# --- unexpected runtime error (unreadable .sdd/ACTIVE) → fail CLOSED (exit 2, not 1) ---
+p=$(new_proj e1 REVIEW 1); chmod 000 "$p/.sdd/ACTIVE"
+rc=0; ( cd "$p" && printf '{"agent_type":"architect"}' | CLAUDE_PROJECT_DIR="$p" bash "$HOOK" >/dev/null 2>&1 ); rc=$?
+chmod 644 "$p/.sdd/ACTIVE"
+if [ "$rc" -eq 2 ]; then pass=$((pass+1)); printf 'ok   %-42s rc=2\n' "unreadable-ACTIVE-fails-closed"
+else fail=$((fail+1)); printf 'FAIL %-42s want=2 got=%s\n' "unreadable-ACTIVE-fails-closed" "$rc"; fi
+
 echo "-----"
 echo "passed=$pass failed=$fail"
 [ "$fail" -eq 0 ]

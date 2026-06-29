@@ -63,6 +63,12 @@ fire "standalone-escape-blocks"          "$sa" ".sdd/feat/spec.md" "[s](../../..
 fire "standalone-plain-relative-allows"  "$sa" ".sdd/feat/spec.md" "[a](sub/child.md) and [b](./n.md)" 0
 fire "standalone-url-and-anchor-allow"   "$sa" ".sdd/feat/spec.md" "[r](https://reg/ledger.post) and [s](#section)" 0
 
+# Rule 2 — reference-style link definitions also escape the chokepoint (audit F1); two-sided
+fire "refstyle-escape-blocks"            "$sa" ".sdd/feat/spec.md" "$(printf 'see [s][r]\n\n[r]: ../../../sibling/y.md\n')" 2   # ref-style def climbs out
+fire "refstyle-in-repo-allows"           "$sa" ".sdd/feat/spec.md" "$(printf 'see [x][r]\n\n[r]: ../../x.md\n')"             0   # lands at repo root
+fire "refstyle-angle-escape-blocks"      "$sa" ".sdd/feat/spec.md" "$(printf '[r]: <../../../sibling/y.md>\n')"             2   # angle-bracket destination
+fire "refstyle-url-allows"               "$sa" ".sdd/feat/spec.md" "$(printf '[r]: https://reg/ledger.post\n')"            0   # URL ref-def is fine
+
 # --- workspace fixture (.gitmodules at root, not a submodule) → rule 1 on, rule 2 INERT ---
 ws="$work/workspace"; mkdir -p "$ws"; : > "$ws/.gitmodules"
 fire "workspace-downlink-allows"           "$ws" ".sdd/_epic/lessons/foo.md" "[m](../../../member/.sdd/story/x.md)" 0   # representative down-link

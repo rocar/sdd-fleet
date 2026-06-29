@@ -5,6 +5,10 @@
 # documented payload field is agent_type; one legacy fallback is kept for
 # older Claude Code versions.
 set -euo pipefail
+# Fail CLOSED on any unexpected runtime error (mirrors every other gate hook, audit §3.5):
+# exit 2 blocks the stop; never fail OPEN (exit 1) on a set -e fault. Deliberate allows below
+# are explicit exit 0.
+trap 'echo "sdd-fleet: check-review-written errored — failing closed" >&2; exit 2' ERR
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./_lib.sh
