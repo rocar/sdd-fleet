@@ -97,6 +97,19 @@ check("ac-empty-payload-missing", uncoveredCriteria({}, ["AC-1"]).length === 1);
 check("ac-no-criteria-inert",     uncoveredCriteria({}, []).length === 0);
 check("ac-null-payload-missing",  uncoveredCriteria(null, ["AC-1"]).length === 1);
 
+// ---- adversarialConcerns: security/money/pii hunted separately, non-clear → vote ----
+const adv = {
+  security:       { verdict: "blocker", findings: ["SQL injection in login query"] },
+  money_movement: { verdict: "clear",   findings: [] },
+  pii:            { verdict: "concern", findings: ["email logged in plaintext"] },
+};
+const ac = adversarialConcerns(adv);
+check("adv-blocker-axis-blocker", ac.some((c) => c.severity === "blocker" && c.text.indexOf("[security]") === 0));
+check("adv-clear-axis-skipped",   !ac.some((c) => c.text.indexOf("money_movement") !== -1));
+check("adv-concern-axis-major",   ac.some((c) => c.severity === "major" && c.text.indexOf("[pii]") === 0));
+check("adv-raised-by-adversary",  ac.every((c) => c.raised_by === "adversary"));
+check("adv-null-empty",           adversarialConcerns(null).length === 0);
+
 console.log("-----");
 console.log("passed=" + pass + " failed=" + fail);
 process.exit(fail > 0 ? 1 : 0);

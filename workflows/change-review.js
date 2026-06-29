@@ -256,6 +256,28 @@ const ADJUDICATION_SCHEMA = {
   },
 };
 
+// The dedicated adversarial pass: one required verdict per risk axis, so silence on
+// a security/money/PII axis is impossible (the schema forces all three).
+const ADVERSARIAL_AXIS = {
+  type: "object",
+  additionalProperties: false,
+  required: ["verdict", "findings"],
+  properties: {
+    verdict: { type: "string", enum: ["clear", "concern", "blocker"] },
+    findings: { type: "array", items: { type: "string" } },
+  },
+};
+const ADVERSARIAL_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["security", "money_movement", "pii"],
+  properties: {
+    security: ADVERSARIAL_AXIS,
+    money_movement: ADVERSARIAL_AXIS,
+    pii: ADVERSARIAL_AXIS,
+  },
+};
+
 // ---------- Phase 1: fan-out review ----------
 
 phase("Fan-out review");
@@ -314,6 +336,29 @@ if (criteria.length > 0) {
 }
 
 const allConcerns = mergeConcerns(reviews);
+
+// Dedicated adversarial pass — security / money_movement / pii hunted SEPARATELY
+// (not folded into a general lens), required verdict per axis (silence impossible).
+// Its non-clear findings enter the vote like any other concern. Null → incomplete.
+const adversarial = await agent(adversarialPrompt(feature, cycle), {
+  label: "adversarial",
+  phase: "Fan-out review",
+  schema: ADVERSARIAL_SCHEMA,
+});
+if (!adversarial) {
+  log(`Change-review incomplete: the adversarial pass returned no usable payload. Cleaning up without advancing state.`);
+  const scribeResult = await applyScribe(cleanupEnvelope(feature, now, runId));
+  return {
+    verdict: "incomplete",
+    reason: "missing-adversarial-payload",
+    feature,
+    cycle,
+    scribe_apply: scribeResult.ok ? "applied" : "failed",
+    scribe_error: scribeResult.error,
+    note: "The dedicated security/money/PII pass did not return — silence on those axes is not allowed. PHASE/CHANGE_CYCLE unchanged. Re-run /sdd-fleet:pr-review.",
+  };
+}
+allConcerns.push(...adversarialConcerns(adversarial));
 
 // ---------- Phase 2: cross-examination ----------
 
@@ -448,6 +493,22 @@ Return the structured object:
 - concerns: array of { id, severity, text }. Use stable IDs "${role}-1", "${role}-2", ...
   If the change is clean from your lens, return an empty concerns array and status "approved".
 - ac_verdicts: array of { criterion, verdict ("pass"|"fail"|"concern"), note? } — one per acceptance criterion above.`;
+}
+
+function adversarialPrompt(feature, cycle) {
+  return `You are a DEDICATED ADVERSARIAL reviewer over the IMPLEMENTED CHANGE, cycle ${cycle}. Active feature: ${feature}.
+Your ONLY job is to hunt three risk axes SEPARATELY in the actual code — NOT a general review:
+- security: injection, broken authz/authn, secrets handling, unsafe deserialization, SSRF, path traversal, etc.
+- money_movement: anything that creates / moves / refunds value — correctness, idempotency, double-spend, rounding, the audit trail.
+- pii: personal-data handling — exposure in logs/errors, retention, consent, encryption at rest/in transit.
+
+Read .sdd/${feature}/spec.md, acceptance.md, IMPL_NOTES.md, and the changed source/tests
+yourself (you have Read/Grep/Glob; use Bash for \`git diff\` if available).
+
+Return a verdict on EACH axis — there is NO silent option (a missing axis is a failure):
+- verdict: "clear" / "concern" / "blocker"; findings: array (empty only when "clear").
+
+Return the structured object { security:{verdict,findings}, money_movement:{verdict,findings}, pii:{verdict,findings} }.`;
 }
 
 function crossExamPrompt(role, allConcerns, feature, cycle) {
@@ -641,6 +702,36 @@ function uncoveredCriteria(payload, criteria) {
   }
   return criteria.filter((c) => !seen[c]);
 }
+
+// adversarialConcerns(adv): the dedicated adversarial pass's output (security,
+// money_movement, pii — hunted SEPARATELY, not folded into a general lens, design
+// §02). Turns each NON-clear axis verdict into a concern that enters the survival
+// vote: a "blocker" axis → blocker concern, a "concern" axis → major. The required
+// per-axis verdict (enforced by the schema) means silence on a security/money/PII
+// axis is impossible. Pure; null adv → [] (the caller treats a missing pass as incomplete).
+function adversarialConcerns(adv) {
+  if (!adv) return [];
+  const out = [];
+  const axes = ["security", "money_movement", "pii"];
+  for (const ax of axes) {
+    const a = adv[ax];
+    if (!a || a.verdict === "clear") continue;
+    const sev = a.verdict === "blocker" ? "blocker" : "major";
+    const findings = Array.isArray(a.findings) && a.findings.length ? a.findings : ["(unspecified)"];
+    findings.forEach((f, i) => {
+      out.push({
+        id: `adversary-${ax}-${i + 1}`,
+        severity: sev,
+        raised_by: "adversary",
+        text: `[${ax}] ${f}`,
+        refuted: false,
+        refuted_by: null,
+        refutation_reason: null,
+      });
+    });
+  }
+  return out;
+}
 // --- LAYER2-VOTE-HELPERS END ---
 
 function buildEnvelope({ feature, cycle, cycleBudget, now, reviews, surviving, verdict, escalationReason, survivingBlockerCount }) {
@@ -675,6 +766,15 @@ function buildEnvelope({ feature, cycle, cycleBudget, now, reviews, surviving, v
     reviewEntries.push(
       [`## Change Cycle ${cycle} — counterfactual — ${now}`, `- [blocker] ${cf[0].text}`, "status: concerns-raised"].join("\n")
     );
+  }
+
+  // The dedicated adversarial pass's surviving findings (raised_by "adversary").
+  const adv = surviving.filter((c) => c.raised_by === "adversary");
+  if (adv.length > 0) {
+    const al = [`## Change Cycle ${cycle} — adversarial (security/money/pii) — ${now}`];
+    for (const c of adv) al.push(`- [${c.severity}] ${c.text}${c.refuted ? ` (refuted-by: ${c.refuted_by})` : ""}`);
+    al.push(`status: ${adv.some((c) => !c.refuted) ? "concerns-raised" : "approved"}`);
+    reviewEntries.push(al.join("\n"));
   }
 
   const escalation_payload =

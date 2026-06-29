@@ -238,9 +238,16 @@ reviewer-gating hooks stand down while the run is live). The workflow runs four
 phases:
 
 1. **Fan-out** — architect, qa, coder review in parallel; each returns a structured
-   concerns payload `{role, status, concerns:[{id,severity,text}]}`. Their
+   payload `{role, status, concerns:[{id,severity,text}], ac_verdicts:[…]}`. Their
    `AgentDefinition.tools` omits `Write`/`Edit`; `AgentDefinition.skills` preloads
-   `review-rubric`.
+   `review-rubric`. **Detection floor (two code-enforced guarantees):** each reviewer
+   must return an explicit pass/fail/concern verdict for **every** acceptance
+   criterion the command passes (`criteria`) — a reviewer that omits one makes the run
+   `incomplete` and it re-runs, so silence on a requirement is impossible; and a
+   **dedicated adversarial pass** hunts `security` / `money_movement` / `pii`
+   *separately* (a required verdict per axis), its non-clear findings entering the
+   vote. QA's coverage judgement is grounded in a real `scripts/coverage.sh` capture
+   recorded in IMPL_NOTES.md, not the model's opinion.
 2. **Cross-examination** — each reviewer must refute or affirm peers' concerns. A
    refutation must cite spec.md or acceptance.md as structured counter-evidence and
    come from a different-role reviewer (self-refutation is filtered). There is no
