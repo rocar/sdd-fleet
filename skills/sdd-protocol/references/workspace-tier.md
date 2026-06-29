@@ -246,9 +246,18 @@ Claude session (a separate, optional registration) — just not as this determin
   per-story create/transition path are unaffected; the test fixture supplies edges, `plan.md`
   authoritative on any conflict.)
 
-A dispatched story is picked up by the per-repo `/sdd-fleet:jira-story <id>` machine, which
-reads its Jira story as starting context, pulls structured detail from the vault, and runs
-the §2 (per-repo) state machine.
+A dispatched story is intended to be picked up by the per-repo `/sdd-fleet:jira-story <id>`
+machine and run through the §2 (per-repo) state machine.
+
+- *Real story-ID intake from Jira + the vault is deferred → the design's "pinned neighbourhood
+  snapshot" does not exist yet.* Today `/sdd-fleet:jira-story` is the slug-based feature-intake
+  command: it does **not** read a Jira issue by ID (the `jira-adapter` has no read-single-story
+  verb), nor does it inherit the governing epic's ratified `contracts.md`/`plan.md`, nor pin a
+  dependency-version snapshot from `workspace/.sdd/_epic/<epic>/`. What IS enforced in code is the
+  ratification PRECONDITION (the `epic-ratified-before-fanout` hook blocks spec'ing a story whose
+  governing epic is not ratified), and per-feature intent flows via the product backlog seed; only
+  the Jira-read + vault contract-design inheritance + the pinned snapshot are the deferred part.
+  This lands with live conductor dispatch (it shares the edge-projection prerequisite above).
 
 ## Promotion of lessons is human-confirmed
 

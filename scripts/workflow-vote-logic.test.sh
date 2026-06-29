@@ -110,6 +110,17 @@ check("adv-concern-axis-major",   ac.some((c) => c.severity === "major" && c.tex
 check("adv-raised-by-adversary",  ac.every((c) => c.raised_by === "adversary"));
 check("adv-null-empty",           adversarialConcerns(null).length === 0);
 
+// ---- crossServiceConcerns: semver cross-service impact → concern (the one model call) ----
+const xsMajor = { contract: "pay.authorise", old: "3.2.0", new: "4.0.0", bump: "major", pinned_consumers: ["checkout", "ledger"], pinned_count: 2, model_call_required: false };
+const cm = crossServiceConcerns(xsMajor, false);
+check("xs-major-pinned-blocker", cm.length === 1 && cm[0].severity === "blocker" && cm[0].raised_by === "cross-service");
+const xsMinor = { contract: "pay.authorise", old: "3.2.0", new: "3.3.0", bump: "minor", pinned_consumers: ["checkout"], pinned_count: 1, model_call_required: true };
+check("xs-minor-breaking-blocker", crossServiceConcerns(xsMinor, true).length === 1);
+check("xs-minor-honest-clear",     crossServiceConcerns(xsMinor, false).length === 0);
+const xsNoPinned = { contract: "x", old: "1.0.0", new: "2.0.0", bump: "major", pinned_consumers: [], pinned_count: 0, model_call_required: false };
+check("xs-no-pinned-clear",        crossServiceConcerns(xsNoPinned, false).length === 0);
+check("xs-null-clear",             crossServiceConcerns(null, false).length === 0);
+
 console.log("-----");
 console.log("passed=" + pass + " failed=" + fail);
 process.exit(fail > 0 ? 1 : 0);

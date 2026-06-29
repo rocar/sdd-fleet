@@ -71,6 +71,12 @@ let priorBlockers = null;
 // Empty/absent → the check is inert (backward compatible).
 const criteria = Array.isArray(A.criteria) ? A.criteria.filter((c) => typeof c === "string") : [];
 
+// Cross-service-impact (design §03): the deterministic scripts/semver-check.sh result
+// the command attaches when this repo's contract change reaches pinned consumers. It
+// drives the cross-service concern and (only for the contested minor/patch-with-pinned
+// case) the single "breaking beyond the bump?" model call. Absent → no such concern.
+const semver = A.semver && typeof A.semver === "object" ? A.semver : null;
+
 // Scribe result schema — declared HERE, above the first applyScribe() call site
 // (the invalid-args guard just below, and the survival-vote apply later). The
 // applyScribe function declaration is hoisted, but SCRIBE_RESULT_SCHEMA is a
@@ -295,6 +301,14 @@ const ADVERSARIAL_SCHEMA = {
   },
 };
 
+// The single cross-service model call: "is this diff breaking beyond its version bump?"
+const BREAKING_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["breaking", "reason"],
+  properties: { breaking: { type: "boolean" }, reason: { type: "string" } },
+};
+
 // ---------- Phase 1: fan-out review ----------
 
 phase("Fan-out review");
@@ -383,6 +397,22 @@ if (!adversarial) {
   };
 }
 allConcerns.push(...adversarialConcerns(adversarial));
+
+// Cross-service impact: the deterministic semver + pinned-consumer result is already
+// computed (by the command via scripts/semver-check.sh). The model gets at most ONE
+// call — and only for the contested minor/patch-with-pinned-consumers case — "is this
+// diff breaking beyond its version bump?". A major bump reaching consumers is a
+// deterministic blocker; no pinned consumers → no concern.
+let crossServiceBreaking = false;
+if (semver && semver.model_call_required) {
+  const v = await agent(crossServicePrompt(semver, feature), {
+    label: "cross-service",
+    phase: "Fan-out review",
+    schema: BREAKING_SCHEMA,
+  });
+  crossServiceBreaking = !!(v && v.breaking === true);
+}
+allConcerns.push(...crossServiceConcerns(semver, crossServiceBreaking));
 
 // ---------- Phase 2: cross-examination ----------
 
@@ -500,6 +530,22 @@ Return your review as the structured object you are required to produce:
 - concerns: array of { id, severity, text }. Use stable IDs "${role}-1", "${role}-2", ...
   If you have no findings, return an empty concerns array and status "approved".
 - ac_verdicts: array of { criterion, verdict ("pass"|"fail"|"concern"), note? } — one per acceptance criterion above.`;
+}
+
+function crossServicePrompt(semver, feature) {
+  return `You are judging CROSS-SERVICE IMPACT for feature ${feature} — exactly ONE call.
+The harness already did the deterministic part: contract ${semver.contract} is bumping
+${semver.old} -> ${semver.new} (a ${semver.bump} bump), and ${semver.pinned_count} consumer(s)
+are pinned to the old major: ${(semver.pinned_consumers || []).join(", ")}.
+
+A ${semver.bump} bump CLAIMS to be non-breaking. Your single judgement: read the contract
+spec/diff (.sdd/${feature}/, contracts/, the published registry entry) and decide whether the
+ACTUAL change is SEMANTICALLY BREAKING beyond what the version bump admits — e.g. a field type
+changed, a required field added, an enum value removed, semantics altered — anything that would
+break a pinned consumer despite the ${semver.bump} bump.
+
+Return { breaking: <true|false>, reason: "<one line>" }. When in doubt, breaking=true (the safe
+default protects the pinned consumers).`;
 }
 
 function adversarialPrompt(feature, cycle) {
@@ -742,6 +788,32 @@ function adversarialConcerns(adv) {
   }
   return out;
 }
+
+// crossServiceConcerns(semver, breakingVerdict): the cross-service-impact concern
+// (design §03). semver is the deterministic scripts/semver-check.sh result (run by
+// the command — the sandbox cannot exec); breakingVerdict is the single model call
+// ("breaking beyond the bump?"), only meaningful when semver.model_call_required.
+// No pinned consumers → no concern. A MAJOR bump reaching pinned consumers is a
+// declared-breaking blocker (deterministic). A minor/patch reaching pinned consumers
+// is a blocker ONLY if the model judged it breaking beyond its bump. Pure.
+function crossServiceConcerns(semver, breakingVerdict) {
+  if (!semver || typeof semver !== "object") return [];
+  const pc = typeof semver.pinned_count === "number" ? semver.pinned_count : 0;
+  if (pc <= 0) return [];
+  const who =
+    Array.isArray(semver.pinned_consumers) && semver.pinned_consumers.length
+      ? semver.pinned_consumers.join(", ")
+      : `${pc} consumer(s)`;
+  const base = `[cross-service] ${semver.contract} ${semver.old}->${semver.new} (${semver.bump}) reaches ${pc} pinned consumer(s): ${who}.`;
+  const mk = (text) => [{ id: "cross-service-1", severity: "blocker", raised_by: "cross-service", text, refuted: false, refuted_by: null, refutation_reason: null }];
+  if (semver.bump === "major") {
+    return mk(`${base} A major (breaking) bump breaks pinned consumers — re-spec additively or coordinate a migration via ADR.`);
+  }
+  if (semver.model_call_required && breakingVerdict === true) {
+    return mk(`${base} The ${semver.bump} bump claims non-breaking, but the diff is semantically breaking beyond its version bump — bump major or re-spec additively.`);
+  }
+  return [];
+}
 // --- LAYER2-VOTE-HELPERS END ---
 
 function buildEnvelope({ feature, cycle, cycleBudget, now, reviews, surviving, verdict, escalationReason, survivingBlockerCount }) {
@@ -778,6 +850,15 @@ function buildEnvelope({ feature, cycle, cycleBudget, now, reviews, surviving, v
     for (const c of adv) al.push(`- [${c.severity}] ${c.text}${c.refuted ? ` (refuted-by: ${c.refuted_by})` : ""}`);
     al.push(`status: ${adv.some((c) => !c.refuted) ? "concerns-raised" : "approved"}`);
     reviewEntries.push(al.join("\n"));
+  }
+
+  // The cross-service-impact concern (raised_by "cross-service" — not a roster role).
+  const xs = surviving.filter((c) => c.raised_by === "cross-service");
+  if (xs.length > 0) {
+    const xl = [`## Cycle ${cycle} — cross-service impact — ${now}`];
+    for (const c of xs) xl.push(`- [${c.severity}] ${c.text}${c.refuted ? ` (refuted-by: ${c.refuted_by})` : ""}`);
+    xl.push(`status: ${xs.some((c) => !c.refuted) ? "concerns-raised" : "approved"}`);
+    reviewEntries.push(xl.join("\n"));
   }
 
   const escalation_payload =

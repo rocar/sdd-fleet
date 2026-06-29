@@ -78,8 +78,12 @@ This decision is **wired** into the **blast-radius human gate** (below). That ho
 bump (major/minor/patch/none; downgrade ⇒ error) and resolves the **pinned consumers** of the
 old major from the catalog, all deterministically. It emits `model_call_required` — true only
 for a minor/patch bump with pinned consumers (the single contested case: "is this diff
-semantically breaking beyond its bump?"). The script makes **no model call**; the isolated,
-logged model adjudication is a later slice. The decision is logged to stderr.
+semantically breaking beyond its bump?"). The script makes **no model call** (the decision is
+logged to stderr); the command runs it and passes the JSON to the REVIEW / CHANGE_REVIEW
+workflow as the `semver` arg, where a **major** bump reaching pinned consumers becomes a
+deterministic cross-service blocker and a `model_call_required` minor/patch triggers exactly
+**one** isolated, logged adjudicator call before joining the survival vote (`review.js` /
+`change-review.js`, fed by `feature-dev` / `pr-review`).
 
 ## The cross-service gates (fail-closed hooks)
 
