@@ -56,6 +56,10 @@ move these out of Unreleased on the next release.
   smoke test is restored at `docs/smoke/`.
 
 ### Fixed
+- `workflow-determinism-lint` no longer emits a false `missing-meta` rejection on a large,
+  valid workflow: the `export const meta` check used `printf … | grep -q`, which under
+  `set -o pipefail` returns non-zero when `grep -q` closes the pipe early and `printf` takes
+  SIGPIPE — intermittently failing the lint on the bigger workflows. Switched to a herestring.
 - `link-discipline` now also catches reference-style escaping link definitions
   (`[r]: ../../../x.md`) and their `<…>` form — it previously scanned inline links only.
 - Docs: real component counts (5 workflows, 22 hooks), the architecture + authority diagrams,

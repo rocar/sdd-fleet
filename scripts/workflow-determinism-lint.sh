@@ -130,7 +130,11 @@ scan "forbidden-api" "${WB}new[[:space:]]+Function"
 scan "forbidden-api" "${WB}fetch[[:space:]]*\("
 
 # --- contract: a workflow must declare `export const meta` ---
-if ! printf '%s\n' "$stripped" | grep -qE 'export[[:space:]]+const[[:space:]]+meta'; then
+# Herestring, NOT `printf … | grep -q`: under `set -o pipefail`, `grep -q` matches and
+# closes the pipe early, `printf` then takes SIGPIPE (141), and the pipeline returns
+# non-zero — which `if !` would read as "meta missing" and falsely reject a large, valid
+# workflow. The herestring has no pipe, so the result is the grep's alone.
+if ! grep -qE 'export[[:space:]]+const[[:space:]]+meta' <<<"$stripped"; then
   emit "missing-meta" 0 "no 'export const meta' declaration — not a workflow contract"
 fi
 
