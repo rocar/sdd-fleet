@@ -50,6 +50,22 @@ skill. Consult it for the CHANGE_REVIEW phase, the CHANGE_CYCLE budget
      output. The `stop-tests` hook would catch this at session-end anyway;
      catching it here gives a clearer error.
 
+4b. **Capture REAL coverage (grounds qa, not its opinion — audit C3).** Run the
+   deterministic helper and record its verdict so the change-review qa reviewer (which
+   reads IMPL_NOTES.md) reacts to the captured number, not a guess:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/coverage.sh"
+   ```
+   Append the `SDD_FLEET_COVERAGE: {…}` line to `.sdd/<slug>/IMPL_NOTES.md` as
+   `real-coverage: <pct>% (per scripts/coverage.sh)`. Branch on its verdict:
+   - `report` / `ok` → proceed (the real % is now on record for qa).
+   - `below` (an `SDD_FLEET_COVERAGE_MIN` threshold is set and unmet) → refuse
+     `SDD_FLEET_REFUSE: {"command":"pr-review","code":2,"reason":"coverage-below-threshold","pct":<n>,"min":<n>}`;
+     coverage is a real gate when a threshold is configured.
+   - `skip` (no coverage tool / unparseable) → note it in IMPL_NOTES.md and proceed;
+     qa falls back to matrix-based assessment (the capture is best-effort, not a hard
+     dependency).
+
 5. **Verify the workflow runtime.** CHANGE_REVIEW runs as a dynamic workflow
    (`workflows/change-review.js`) — **the same deterministic engine as REVIEW**
    (fan-out → cross-examine → neutral-adjudicator survival vote → bounded,
