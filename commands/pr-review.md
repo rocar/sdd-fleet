@@ -113,7 +113,7 @@ skill. Consult it for the CHANGE_REVIEW phase, the CHANGE_CYCLE budget
 
 8b. **Invoke the Workflow tool.** Call `Workflow` with:
    - `scriptPath`: `${CLAUDE_PLUGIN_ROOT}/workflows/change-review.js`
-   - `args`: `{ "feature": "<slug>", "cycle": <new_cycle>, "now": "<iso8601>", "run_id": "<id from step 8>", "roles": ["architect","qa"], "counterfactual": "<pass|fail|skip from step 7>" }` — **plus** `"prior_blockers": <n>` from PROGRESS.md `CHANGE_SURVIVING_BLOCKERS` when present (**omit on the first change cycle** so the regression guard is disabled for cycle 1).
+   - `args`: `{ "feature": "<slug>", "cycle": <new_cycle>, "now": "<iso8601>", "run_id": "<id from step 8>", "roles": ["architect","qa"], "counterfactual": "<pass|fail|skip from step 7>" }` — **plus** `"prior_blockers": <n>` from PROGRESS.md `CHANGE_SURVIVING_BLOCKERS` when present (**omit on the first change cycle** so the regression guard is disabled for cycle 1), **plus** `"criteria": [<AC ids>]` parsed from `.sdd/<slug>/acceptance.md` (or the spec's inline `## Acceptance Criteria`) so the workflow requires a per-AC verdict from every reviewer (silence impossible); omit/empty when there are no `AC-N` ids.
    Supply `now` yourself (the script cannot call Date). Then emit the launch line:
    `SDD_FLEET_WORKFLOW_LAUNCHED: {"runId":"<id>","transcriptDir":"<path>","status":"async_launched","feature":"<slug>","cycle":<N>,"workflow":"change-review"}`.
 

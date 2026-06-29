@@ -88,6 +88,15 @@ check("adj-unsound-survives",    applied.find((c) => c.id === "architect-1").ref
 applied = applyAdjudications(concerns, contested, []);
 check("adj-empty-fail-safe",     applied.find((c) => c.id === "architect-1").refuted === false);
 
+// ---- uncoveredCriteria: every acceptance criterion needs a verdict (silence impossible) ----
+const full = { ac_verdicts: [{ criterion: "AC-1", verdict: "pass" }, { criterion: "AC-2", verdict: "fail" }] };
+check("ac-all-covered",           uncoveredCriteria(full, ["AC-1", "AC-2"]).length === 0);
+const partial = { ac_verdicts: [{ criterion: "AC-1", verdict: "pass" }] };
+check("ac-missing-reported",      JSON.stringify(uncoveredCriteria(partial, ["AC-1", "AC-2"])) === JSON.stringify(["AC-2"]));
+check("ac-empty-payload-missing", uncoveredCriteria({}, ["AC-1"]).length === 1);
+check("ac-no-criteria-inert",     uncoveredCriteria({}, []).length === 0);
+check("ac-null-payload-missing",  uncoveredCriteria(null, ["AC-1"]).length === 1);
+
 console.log("-----");
 console.log("passed=" + pass + " failed=" + fail);
 process.exit(fail > 0 ? 1 : 0);

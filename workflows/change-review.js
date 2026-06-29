@@ -65,6 +65,11 @@ let priorBlockers = null;
   if (typeof v === "number" && Number.isInteger(v) && v >= 0) priorBlockers = v;
 }
 
+// Acceptance-criterion ids the command read from acceptance.md, passed so the
+// detection-floor completeness check can require a per-AC verdict from every
+// reviewer (silence on a requirement is impossible). Empty/absent → inert.
+const criteria = Array.isArray(A.criteria) ? A.criteria.filter((c) => typeof c === "string") : [];
+
 // Scribe result schema — declared HERE, above the first applyScribe() call site, to
 // avoid a temporal-dead-zone read (the workflow-determinism-lint scribe-schema-tdz rule).
 const SCRIBE_RESULT_SCHEMA = {
@@ -163,7 +168,7 @@ if (budgetResult.clamped) {
 const CONCERNS_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["role", "status", "concerns"],
+  required: ["role", "status", "concerns", "ac_verdicts"],
   properties: {
     role: { type: "string", enum: ROLES },
     status: { type: "string", enum: ["concerns-raised", "approved"] },
@@ -177,6 +182,21 @@ const CONCERNS_SCHEMA = {
           id: { type: "string" },
           severity: { type: "string", enum: ["blocker", "major", "minor"] },
           text: { type: "string" },
+        },
+      },
+    },
+    // The detection floor: one explicit verdict per acceptance criterion (silence
+    // impossible). Completeness vs the passed criteria is enforced below.
+    ac_verdicts: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["criterion", "verdict"],
+        properties: {
+          criterion: { type: "string" },
+          verdict: { type: "string", enum: ["pass", "fail", "concern"] },
+          note: { type: "string" },
         },
       },
     },
@@ -242,7 +262,7 @@ phase("Fan-out review");
 
 const reviewerResults = await parallel(
   ROLES.map((role) => () =>
-    agent(reviewPrompt(role, feature, cycle), {
+    agent(reviewPrompt(role, feature, cycle, criteria), {
       label: `change-review:${role}`,
       phase: "Fan-out review",
       agentType: `sdd-fleet:${role}`,
@@ -266,6 +286,30 @@ for (const r of reviews) {
       scribe_error: scribeResult.error,
       note: "No REVIEW.md entries written; PHASE/CHANGE_CYCLE unchanged. Re-run /sdd-fleet:pr-review.",
     };
+  }
+}
+
+// Detection floor: every reviewer must return a verdict for EVERY acceptance
+// criterion — silence on a requirement is impossible. A reviewer that leaves a
+// criterion unaddressed is incomplete (re-run), exactly like a null payload.
+if (criteria.length > 0) {
+  for (const r of reviews) {
+    const missing = uncoveredCriteria(r.payload, criteria);
+    if (missing.length > 0) {
+      log(`Change-review incomplete: ${r.role} left ${missing.length} acceptance criteria unaddressed (${missing.join(", ")}). Cleaning up without advancing state.`);
+      const scribeResult = await applyScribe(cleanupEnvelope(feature, now, runId));
+      return {
+        verdict: "incomplete",
+        reason: "uncovered-acceptance-criteria",
+        role: r.role,
+        missing,
+        feature,
+        cycle,
+        scribe_apply: scribeResult.ok ? "applied" : "failed",
+        scribe_error: scribeResult.error,
+        note: "A reviewer did not return a verdict for every acceptance criterion; silence on a requirement is not allowed. PHASE/CHANGE_CYCLE unchanged. Re-run /sdd-fleet:pr-review.",
+      };
+    }
   }
 }
 
@@ -372,13 +416,23 @@ return {
 
 // ================= helpers =================
 
-function reviewPrompt(role, feature, cycle) {
+function reviewPrompt(role, feature, cycle, criteria) {
+  const acBlock =
+    criteria && criteria.length > 0
+      ? `\n\nThe acceptance criteria are: ${criteria.join(", ")}.
+You MUST return one ac_verdicts entry for EVERY criterion above — no "silent" option.
+For each: "pass" (the IMPLEMENTED change satisfies it), "concern" (met with a
+reservation), or "fail" (the change does not satisfy it). For any "fail"/"concern",
+ALSO raise a matching item in concerns. A missing verdict makes the review incomplete
+and it re-runs. IMPL_NOTES.md may carry a recorded \`real-coverage:\` line — ground any
+coverage judgement in that captured number, not a guess.`
+      : `\n\nNo acceptance-criterion ids were supplied — return ac_verdicts as an empty array.`;
   return `You are the ${role} reviewer in CHANGE_REVIEW, cycle ${cycle}. Active feature: ${feature}.
 
 You are reviewing the IMPLEMENTED CHANGE (the PR), not the spec in the abstract. Read
 yourself (you have Read/Grep/Glob; use Bash for \`git diff\` against the base if available):
 - .sdd/${feature}/spec.md and acceptance.md   (what the change must satisfy)
-- .sdd/${feature}/IMPL_NOTES.md                (coder's gap:/deviation:/todo: notes)
+- .sdd/${feature}/IMPL_NOTES.md                (coder's gap:/deviation:/todo: notes; real-coverage)
 - .sdd/${feature}/TEST_PLAN.md                 (the AC→test coverage matrix)
 - .sdd/${feature}/REVIEW.md                    (prior cycles)
 - the source under the project root and tests/ (the implemented change)
@@ -386,13 +440,14 @@ yourself (you have Read/Grep/Glob; use Bash for \`git diff\` against the base if
 Review through your role's lens. The review-rubric skill is preloaded — use it for
 severity (blocker / major / minor):
 - architect: design adherence, ADR compliance, blast radius of the change.
-- qa: does the implementation actually MEET acceptance.md? Coverage gaps before handoff?
+- qa: does the implementation actually MEET acceptance.md? Coverage gaps before handoff?${acBlock}
 
 Return the structured object:
 - role: "${role}"
 - status: "concerns-raised" if you have any blocker/major items, else "approved"
 - concerns: array of { id, severity, text }. Use stable IDs "${role}-1", "${role}-2", ...
-  If the change is clean from your lens, return an empty concerns array and status "approved".`;
+  If the change is clean from your lens, return an empty concerns array and status "approved".
+- ac_verdicts: array of { criterion, verdict ("pass"|"fail"|"concern"), note? } — one per acceptance criterion above.`;
 }
 
 function crossExamPrompt(role, allConcerns, feature, cycle) {
@@ -573,6 +628,19 @@ function applyAdjudications(concerns, contested, adjudications) {
     };
   });
 }
+
+// uncoveredCriteria(payload, criteria): the detection floor's "silence is
+// impossible" check (design §02). Returns the acceptance-criterion ids that a
+// reviewer's payload did NOT return a verdict for. The workflow rejects (re-runs)
+// any reviewer that leaves a criterion unaddressed, so a lens cannot stay silent on
+// a requirement. Inert when criteria is empty (no AC ids passed by the command).
+function uncoveredCriteria(payload, criteria) {
+  const seen = {};
+  for (const v of (payload && payload.ac_verdicts) || []) {
+    if (v && typeof v.criterion === "string") seen[v.criterion] = true;
+  }
+  return criteria.filter((c) => !seen[c]);
+}
 // --- LAYER2-VOTE-HELPERS END ---
 
 function buildEnvelope({ feature, cycle, cycleBudget, now, reviews, surviving, verdict, escalationReason, survivingBlockerCount }) {
@@ -587,6 +655,15 @@ function buildEnvelope({ feature, cycle, cycleBudget, now, reviews, surviving, v
           : "";
         lines.push(`  refuted-by: ${c.refuted_by} — reason: ${c.refutation_reason}${cite}`);
       }
+    }
+    const av = r.payload.ac_verdicts || [];
+    if (av.length > 0) {
+      const nonpass = av.filter((v) => v.verdict !== "pass");
+      lines.push(
+        nonpass.length === 0
+          ? `acceptance: all ${av.length} criteria pass`
+          : `acceptance: ${nonpass.map((v) => `${v.criterion}=${v.verdict}`).join(", ")} (${av.length - nonpass.length}/${av.length} pass)`
+      );
     }
     lines.push(`status: ${r.payload.status || "concerns-raised"}`);
     return lines.join("\n");
