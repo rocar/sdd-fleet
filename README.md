@@ -1,7 +1,7 @@
 # sdd-fleet
 
 A spec-driven multi-agent software house, packaged as a Claude Code plugin.
-**v0.8**
+**v1.0.0**
 
 sdd-fleet turns Claude Code into a disciplined software house. A fleet of role
 subagents drives every change through a deterministic state machine —
@@ -51,14 +51,14 @@ flowchart TB
     end
     subgraph FT["🛠️ FEATURE · loop per unit of work"]
         direction LR
-        SPEC["✍️ SPEC"] --> REVIEW(["⚙️ review workflow<br/>architect · qa · coder"]) --> FIN["✅ FINALIZE"] --> BUILD(["⚙️ deep-build workflow<br/>architect → coders → qa"]) --> CR["🔍 CHANGE_REVIEW"] --> HO["🚀 HANDOFF"]
+        SPEC["✍️ SPEC"] --> REVIEW(["⚙️ review workflow<br/>architect · qa · coder"]) --> FIN["✅ FINALIZE"] --> BUILD(["⚙️ deep-build workflow<br/>architect → coders → qa"]) --> CR(["⚙️ change-review workflow<br/>same engine, on the diff"]) --> HO["🚀 HANDOFF"]
     end
     DEV ==>|"inherit stack · intent · skills"| SPEC
     HO ==>|"ship → flip backlog → next"| DEV
 
     classDef js fill:#f7df1e,color:#000,stroke:#000,stroke-width:2px,font-weight:bold;
     classDef gate fill:#ff8a65,color:#000,stroke:#d84315,stroke-width:2px;
-    class PREV,REVIEW,BUILD js;
+    class PREV,REVIEW,BUILD,CR js;
     class PFIN gate;
 ```
 
@@ -72,21 +72,93 @@ is a plain feature-first project; the feature loop runs identically either way.
 
 ---
 
+## Architecture: a control stack over record planes
+
+Two halves: a **stack of three control layers** (who *acts*) over the **record
+planes** (where *truth* lives). The line that governs everything — **the harness
+owns every consequence, the model judges only the irreducible residue, and the
+human owns the blast radius** — is drawn by colour below.
+
+```mermaid
+flowchart TB
+  subgraph L3["Layer 3 · Workspace — plan · ratify · dispatch"]
+    EP["epic-plan<br/>DAG + contract design → vault"]:::model
+    RAT["RATIFY ◆<br/>human signs off"]:::human
+    MAT["epic-materialise<br/>→ Jira epic + stories"]:::code
+    CON["conductor · reconciler<br/>no model · leased · level-triggered"]:::code
+    EP --> RAT --> MAT --> CON
+  end
+  subgraph L2["Layer 2 · Per-repo feature machine"]
+    SP["SPEC → REVIEW → FINALIZE ▣ → BUILD → CHANGE_REVIEW → HANDOFF ◆"]:::mix
+  end
+  subgraph L1["Layer 1 · Hooks — fail-closed at the tool boundary"]
+    HK["source-before-finalized · finalize · write-lock · traceability<br/>dependency · counterfactual · blast-radius · publish / append-only"]:::code
+  end
+  CON -->|dispatch ready story| SP
+  SP -.enforced by.-> HK
+  subgraph REC["Record planes — one fact, one store"]
+    V["Vault .sdd/<br/>source of truth"]:::code
+    J["Jira<br/>intent · status · sign-off"]:::human
+    R["Registry<br/>contracts · append-only"]:::code
+    C["Catalog<br/>graph · blast radius · DERIVED"]:::code
+  end
+  L2 --- V & J & R
+  R --> C
+  classDef code fill:#D9EDF2,stroke:#0E7490,color:#0a4a5c;
+  classDef model fill:#E7E9ED,stroke:#5B6472,color:#3f4651,stroke-dasharray:5 4;
+  classDef human fill:#F4E9D8,stroke:#B45309,color:#824007;
+  classDef mix fill:#fff,stroke:#AEB6C0,color:#15181F;
+```
+
+**The authority boundary** (🟦 harness · ⬜ model · 🟧 human):
+
+- 🟦 **Harness (code)** owns every *consequence* — the phase gates
+  (finalize · write-lock · traceability · dependency · counterfactual ·
+  blast-radius · publish-ordering · registry append-only), survival-vote counting,
+  the bounded **regression-guarded** loop, semver + blast-radius computation, and
+  workspace dispatch. Reproducible and fail-closed; agents cannot talk past it.
+- ⬜ **Model** judges only the irreducible *residue* — drafting the spec/tests/
+  code, the per-criterion review (a verdict on **every** acceptance criterion), the
+  **dedicated** security/money/PII pass, the one contested soundness call in the
+  survival vote, and the single *"breaking beyond the bump?"* cross-service call.
+- 🟧 **Human** owns the *blast radius* — epic/contract ratification before fan-out,
+  money-movement and PII gates at HANDOFF, escalation resolution.
+
+The per-repo machine, with who decides each phase and the code gates (▣) on it:
+
+```mermaid
+flowchart LR
+  SPEC["✍️ SPEC<br/>architect drafts"]:::model --> REVIEW["🔬 REVIEW<br/>fan-out · adjudicated vote · ≤3"]:::model --> FIN["✅ FINALIZE ▣"]:::code --> BUILD["🔨 BUILD<br/>tests-first"]:::model --> CR["🔍 CHANGE_REVIEW<br/>same engine + counterfactual"]:::model --> HO["🚀 HANDOFF ◆<br/>human approve + merge"]:::human
+  T["testability ▣"]:::code -.-> SPEC
+  WL["write-lock ▣ · traceability ▣"]:::code -.-> BUILD
+  DG["dependency ▣"]:::code -.-> BUILD
+  CF["counterfactual ▣"]:::code -.-> CR
+  BR["blast-radius ▣<br/>N consumers / money / pii"]:::code -.-> HO
+  classDef code fill:#D9EDF2,stroke:#0E7490,color:#0a4a5c;
+  classDef model fill:#E7E9ED,stroke:#5B6472,color:#3f4651,stroke-dasharray:5 4;
+  classDef human fill:#F4E9D8,stroke:#B45309,color:#824007;
+```
+
+The full design rationale — including the end-to-end one-change walkthrough — lives
+in [`docs/sdd-fleet-design.html`](docs/sdd-fleet-design.html).
+
+---
+
 ## Greenfield project cycle
 
 A new product from scratch — the architect *ratifies* a forward stack.
 
 ```mermaid
 flowchart TD
-    NP["🌱 /new-product<br/>vision · backlog · stack"]
-    PR(["⚙️ /plan-review · plan-review workflow<br/>PO · architect · qa interrogate"])
-    PF{"🙋 /plan-finalize ratify<br/>human gate · never auto-passes"}
-    NF["✨ /new-feature<br/>inherits stack + intent"]
-    RV(["⚙️ /review · review workflow<br/>architect · qa · coder → cross-exam → vote"])
-    FZ["✅ /finalize<br/>gate · flips spec FINALIZED"]
-    BD["🔨 /build<br/>tests-first BUILD"]
+    NP["🌱 /sdd-fleet:new-product<br/>vision · backlog · stack"]
+    PR(["⚙️ /sdd-fleet:plan-review · plan-review workflow<br/>PO · architect · qa interrogate"])
+    PF{"🙋 /sdd-fleet:plan-finalize ratify<br/>human gate · never auto-passes"}
+    NF["✨ /sdd-fleet:jira-story &lt;slug&gt;<br/>intake → SPEC · inherits stack + intent"]
+    RV(["⚙️ /sdd-fleet:feature-dev · review workflow<br/>architect · qa · coder → cross-exam → adjudicate"])
+    FZ["✅ /sdd-fleet:feature-dev<br/>FINALIZE gate · flips spec FINALIZED"]
+    BD["🔨 /sdd-fleet:feature-dev<br/>tests-first BUILD"]
     DB(["⚙️ deep-build workflow<br/>architect partitions → coders → qa"])
-    HO["🚀 /handoff<br/>change-review → ship"]
+    HO(["🚀 /sdd-fleet:pr-review<br/>change-review workflow → ship"])
     LOOP(["🔁 flip backlog ✓ → resolve next feature"])
 
     NP --> PR --> PF
@@ -100,7 +172,7 @@ flowchart TD
 
     classDef js fill:#f7df1e,color:#000,stroke:#000,stroke-width:2px,font-weight:bold;
     classDef gate fill:#ff8a65,color:#000,stroke:#d84315,stroke-width:2px;
-    class PR,RV,DB js;
+    class PR,RV,DB,HO js;
     class PF gate;
 ```
 
@@ -118,7 +190,7 @@ flowchart TD
     STK["📦 STACK.md<br/>✅ baseline = BINDING<br/>🔶 forward = PROVISIONAL"]
     PR(["⚙️ /plan-review · plan-review workflow<br/>PO · architect · qa interrogate"])
     PF{"🙋 ratify<br/>provisional never auto-promoted"}
-    LOOP(["🔁 DEVELOPING loop · same as greenfield<br/>new-feature → review workflow → finalize → build → handoff"])
+    LOOP(["🔁 DEVELOPING loop · same as greenfield<br/>jira-story → feature-dev (review·finalize·build) → pr-review"])
     PROMOTE(["🔼 adopt forward stack (human)<br/>un-tag → re-plan-review → ratify"])
 
     NP --> STK --> PR --> PF
@@ -159,17 +231,19 @@ state mutations produced by dynamic workflows (workflow scripts cannot touch the
 filesystem, so they hand a structured envelope to the scribe — which now targets
 either `.sdd/<feature>/` or `.sdd/_product/` via a `workspace_dir` field).
 
-**Four dynamic workflows** under `workflows/`: `review.js` (feature REVIEW),
+**Five dynamic workflows** under `workflows/`: `review.js` (feature REVIEW),
+`change-review.js` (CHANGE_REVIEW — the same engine, on the implemented diff),
 `plan-review.js` (product PLAN_REVIEW), `deep-build.js` (fan-out BUILD), and
 `diagnose.js` (bug-lane root-cause confirmation — the survival vote, inverted).
 Plus deterministic shared scripts under `scripts/` (the backlog resolver, the
 intent-block extractor, the product-memory splice, the status snapshot, the
-atomic ACTIVE-lock acquirer, the workflow determinism-lint and pinner that govern
-the generate-then-pin lane, and the cross-repo contract-governance toolchain —
-service-descriptor, catalog-derive, semver-check, blast-radius and its signature,
-the dependency / CDC checks, and the epic ratify / materialise + conductor
-helpers — each with its own test harness), seven craft skills, seventeen
-gate-enforcing hooks, and the shared memory layer under `.sdd/`.
+atomic ACTIVE-lock acquirer, the deterministic **counterfactual** and **coverage**
+capture the review engine consumes, the workflow determinism-lint and pinner that
+govern the generate-then-pin lane, and the cross-repo contract-governance
+toolchain — service-descriptor, catalog-derive, semver-check, blast-radius and its
+signature, the dependency / CDC checks, and the epic ratify / materialise +
+conductor helpers — each with its own test harness), seven craft skills,
+twenty-two gate-enforcing hooks, and the shared memory layer under `.sdd/`.
 
 **A Layer-3 workspace tier.** Above the per-repo machine, a *workspace* (a
 superproject with member repos as git submodules and one vault over them) plans
@@ -265,7 +339,7 @@ take effect on an installed instance.
 # 3. ratify it (human gate) → unlocks the DEVELOPING loop + writes product memory
 /sdd-fleet:plan-finalize ratify
 
-# 4. start the next backlog feature (or run /new-feature <slug> directly)
+# 4. start the next backlog feature (or run /sdd-fleet:jira-story <slug> directly)
 /sdd-fleet:next-feature        # resolves it; then:
 /sdd-fleet:jira-story <slug>  # inherits the stack + the feature's intent
 /sdd-fleet:feature-dev              # standard/large
@@ -350,11 +424,11 @@ repo that never files a bug behaves exactly as before.
 
 ```mermaid
 flowchart LR
-    T["🐛 /triage<br/>symptom → diagnosis.md"] --> RP["🔬 /reproduce<br/>qa writes the RED test"]
-    RP --> DG(["⚙️ /diagnose · diagnose.js<br/>architect + coder refute the hypothesis"])
-    DG --> FX["🔧 /fix<br/>CONFIRMED → coder turns it GREEN"]
-    FX --> VF["✅ /verify<br/>counterfactual: red-if-reverted"]
-    VF --> SH["🚀 /ship-fix<br/>devops · clear lock"]
+    T["🐛 /sdd-fleet:jira-story &lt;slug&gt;<br/>symptom → diagnosis.md"] --> RP["🔬 /sdd-fleet:feature-dev<br/>REPRODUCE · qa writes the RED test"]
+    RP --> DG(["⚙️ /sdd-fleet:feature-dev · diagnose.js<br/>architect + coder refute the hypothesis"])
+    DG --> FX["🔧 /sdd-fleet:feature-dev<br/>FIX · CONFIRMED → coder turns it GREEN"]
+    FX --> VF["✅ /sdd-fleet:feature-dev<br/>VERIFY · counterfactual: red-if-reverted"]
+    VF --> SH["🚀 /sdd-fleet:pr-review<br/>ship-fix · devops · clear lock"]
 
     classDef js fill:#f7df1e,color:#000,stroke:#000,stroke-width:2px,font-weight:bold;
     class DG js;
@@ -769,7 +843,7 @@ directory — never inside the plugin:
     PROGRESS.md          # orchestrator — phase, TIER, BUILD_MODE, handoff state
     ESCALATION.md        # only if review cycles exhausted
     .workflow-in-flight  # transient marker while a workflow runs
-  <bug-slug>/            # bug lane — a /triage'd bug, same dir shape
+  <bug-slug>/            # bug lane — a triaged bug (via /sdd-fleet:jira-story), same dir shape
     diagnosis.md         # the contract — STATUS: REPORTED|REPRODUCING|DIAGNOSED|CONFIRMED|FIXED
     PROGRESS.md          # LANE: bug · SEV · PHASE: REPORT…HANDOFF · CYCLE/FIX_CYCLE
     REVIEW.md            # append-only diagnose-workflow log
@@ -831,6 +905,9 @@ session per working tree; parallel clones are not serialized against each other.
 | Hook | Effect |
 |---|---|
 | `block-source-before-finalized` | Blocks all non-`.sdd/` writes until `spec.md` is FINALIZED (bug lane: non-`.sdd/`, non-`tests/` writes until the diagnosis is CONFIRMED). |
+| `finalize-gate` | Blocks a `spec.md` flip to STATUS=FINALIZED unless the current review cycle is approved + blocker-free **and** the spec has decidable acceptance criteria (the testability floor) — making FINALIZE a code gate, not a model-set string. `TIER=trivial` waives REVIEW; a live `ESCALATION.md` halts the flip. |
+| `write-lock-tests` | Freezes the qa-authored test suite during a forward feature's BUILD once it is locked (`PROGRESS.md TESTS_LOCKED`, set after `SDD_FLEET_QA_TESTS_READY`) — the coder cannot edit the tests it is judged against. `tests/` stays writable during qa authoring and throughout the bug lane. |
+| `traceability-gate` | Refuses a forward-BUILD source write until `TEST_PLAN.md` maps every acceptance criterion (`AC-<n>`) to a test row, or records it under `## Gaps` — tests-first, every AC mapped before implementation. Inert when the spec has no AC ids. |
 | `guard-bash-writes` | Blocks shell-level source writes (`>`/`>>`, `tee`, `sed -i`, `patch`, `cp`/`mv` destinations) during the same locked phases — Bash is not an escape hatch around the write gates. NotebookEdit is covered by the file gates. |
 | `restrict-reviewer-writes` | Confines writes to `.sdd/<active>/` during REVIEW / CHANGE_REVIEW. |
 | `validate-spec-status` | Rejects a `spec.md` missing its STATUS line or required sections. |
@@ -846,6 +923,7 @@ session per working tree; parallel clones are not serialized against each other.
 | `dependency-gate` | At the `PROGRESS.md → HANDOFF` transition, blocks an undeclared cross-service edge: a diff line matching a registry contract's `client_signature` whose contract isn't in `consumes[]`, or a `consumes[]` token with no published version. Inert for standalone / non-git repos. |
 | `handoff-blast-radius-gate` | Forces a human gate at the HANDOFF transition when a change's blast radius is risky (≥ N transitive consumers, or `money_movement` / `pii` on a reached consumer or the changed service itself). Allowed only when `HANDOFF_APPROVAL.md` carries a `BLAST_RADIUS_SIGNATURE` matching the *current* radius — a widened radius goes stale and re-blocks. |
 | `block-publish-before-handoff` | Blocks a `registry/<contract>/<semver>.json` publish unless the active feature is at HANDOFF, so a contract can't reach the registry before the blast-radius gate has fired. |
+| `registry-append-only` | Refuses to overwrite an already-published `registry/<contract>/<semver>.json` — published versions are immutable; recovery is forward-only (bump the version). |
 | `cdc-gate` | Blocks a contract publish that violates any registered consumer expectation (same major, `required_operations ⊆ operations`, `required_fields ⊆ fields`). |
 
 Hooks block with exit code 2 and return actionable feedback. They are the

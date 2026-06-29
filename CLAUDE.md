@@ -59,28 +59,36 @@ for a fact a plane already owns):
 ```
 .claude-plugin/plugin.json    # manifest (+ marketplace.json)
 agents/                       # role subagents: the three review lenses —
-                              #   architect, coder, qa — plus scribe, the SOLE
-                              #   writer of .sdd/ state. The conductor is NOT an
-                              #   agent (it is deterministic — see Hard rules).
-commands/                     # /sdd-fleet:* slash commands —
-                              #   per-repo:  jira-story, feature-dev, pr-review
-                              #   workspace: epic-plan
+                              #   architect, coder, qa — plus scribe (the SOLE
+                              #   writer of .sdd/ state), classifier (tier/lane
+                              #   routing), and devops (ship). The conductor is NOT
+                              #   an agent (it is deterministic — see Hard rules).
+commands/                     # /sdd-fleet:* slash commands — per-repo: jira-story,
+                              #   feature-dev, pr-review; product: new-product,
+                              #   plan-review, plan-finalize, next-feature,
+                              #   product-memory; workspace: epic-plan, epic-ratify,
+                              #   handoff-approve; ops: status, park,
+                              #   resolve-escalation, scaffold-workflow.
                               #   (the conductor has NO command — dispatch is plumbing)
 skills/                       # sdd-protocol (+references/), review-rubric,
                               #   sdd-spec-template, adr, ... the runtime rulebook
 hooks/hooks.json              # hook registration (the ONLY registration point)
 hooks/scripts/                # fail-closed gate scripts + their *.test.sh, e.g.
-                              #   block-source-before-finalized, testability,
-                              #   traceability (AC->test), write-lock,
-                              #   dependency-gate (service.yaml), counterfactual,
-                              #   epic-ratified-before-fanout, money/PII gate
+                              #   block-source-before-finalized, finalize-gate
+                              #   (incl. the testability floor), write-lock-tests,
+                              #   traceability-gate (AC->test), dependency-gate
+                              #   (service.json), handoff-blast-radius (money/PII),
+                              #   block-publish-before-handoff, registry-append-only,
+                              #   epic-ratified-before-fanout
 workflows/                    # dynamic workflows (isolated JS runtime):
-                              #   the review engine (REVIEW + CHANGE_REVIEW),
-                              #   the build workflow, epic planning
+                              #   the review engine (review.js + change-review.js),
+                              #   deep-build, plan-review, diagnose
 scripts/                      # deterministic, model-free helpers + their *.test.sh:
                               #   the CONDUCTOR reconciler (status-snapshot,
                               #   ready-frontier, lease acquire), semver check,
-                              #   catalog/blast-radius derivation, run-tests
+                              #   catalog/blast-radius derivation, the counterfactual
+                              #   + coverage capture the review engine consumes,
+                              #   run-tests
 docs/                         # contracts, smoke fixtures, history
 .github/workflows/ci.yml      # CI: test matrix + release-channel check
 ```
@@ -122,7 +130,7 @@ bash scripts/run-tests.sh        # every hook + script suite, then the smoke tes
 - **Cross-repo gates are deterministic; the model gets one call.** semver,
   pinned-consumer lookup, and blast-radius are code. The model judges only "is
   this diff semantically breaking beyond its version bump?" A consume edge is
-  declared **only** in `service.yaml`; the catalog is derived from descriptors +
+  declared **only** in `service.json`; the catalog is derived from descriptors +
   published contracts, never hand-edited.
 - **Blast radius drives the human gate.** A change reaching N transitive
   consumers — or any service carrying `money_movement` / `pii` data_classes —
@@ -177,7 +185,7 @@ bash scripts/run-tests.sh        # every hook + script suite, then the smoke tes
   `sdd-protocol` skill.
 - Envelope schema + headless signal contract -> the contract doc under `docs/`.
 - Severity vocabulary -> `skills/review-rubric/SKILL.md`.
-- Service descriptor + blast-radius rules -> the `service.yaml` schema and the
+- Service descriptor + blast-radius rules -> the `service.json` schema and the
   catalog/blast-radius scripts.
 - Spec / acceptance / ADR structure -> `skills/sdd-spec-template`, `skills/adr`.
 - Design lineage -> `docs/history/` and the original sdd-fleet design doc.

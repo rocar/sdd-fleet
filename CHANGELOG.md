@@ -14,6 +14,53 @@ migrated automatically. sdd-fleet assumes a single driver per working tree: one 
 session per worktree, with the `.sdd/ACTIVE` lock serializing acquisition within that worktree
 only (never across clones).
 
+## [Unreleased]
+
+**Design-conformance hardening** — the Layer-2 oracle gates and the review engine's
+determinism guarantees move from command/agent prose into code, matching
+`docs/sdd-fleet-design.html`. Additive: no `.sdd/` schema or `SDD_FLEET_*` signal-grammar
+change (the new `PROGRESS.md` fields `TESTS_LOCKED` / `SURVIVING_BLOCKERS` /
+`CHANGE_SURVIVING_BLOCKERS` and the new workflow args are additive). A version bump + tag
+move these out of Unreleased on the next release.
+
+### Added
+- **finalize-gate** — a `spec.md`→FINALIZED flip now requires (in code) an approved,
+  blocker-free current review cycle **and** decidable acceptance criteria (the testability
+  floor). `TIER=trivial` waives REVIEW; a live `ESCALATION.md` halts the flip.
+- **write-lock-tests** — freezes the qa-authored suite during a forward feature's BUILD
+  (`TESTS_LOCKED`), so the coder cannot edit the tests it is judged against.
+- **traceability-gate** — a forward-BUILD source write requires every acceptance criterion
+  mapped in `TEST_PLAN.md` (or recorded under `## Gaps`).
+- **registry-append-only** — published `registry/<contract>/<semver>.json` versions are
+  immutable; recovery is forward-only.
+- **`workflows/change-review.js`** — CHANGE_REVIEW now runs the same deterministic engine as
+  REVIEW (fan-out → cross-examine → adjudicated survival vote → bounded loop) on the diff;
+  `pr-review` dispatches it instead of a prose `Task` fan-out.
+- **`scripts/counterfactual.sh`** — deterministic revert-source / run-suite verdict, wired
+  into CHANGE_REVIEW as a vote input (a decorative test that stays green on revert is a blocker).
+- **`scripts/coverage.sh`** — grounds QA's coverage verdict in real tool output, recorded in
+  `IMPL_NOTES.md`.
+
+### Changed
+- **Survival vote** — the `MIN_REFUTATION_CHARS` length heuristic is replaced by a single
+  neutral, stake-free soundness adjudicator (citation-resolves + sound); a blocker's identity
+  is a deterministic hash and the loop escalates **early** when the surviving-blocker count
+  fails to strictly fall.
+- **Detection floor** — each reviewer must return a pass/fail/concern verdict on **every**
+  acceptance criterion (silence on a requirement is impossible), and a **dedicated** adversarial
+  pass hunts `security` / `money_movement` / `pii` separately.
+- **Cross-service** — `semver-check.sh` is wired into REVIEW as the single "breaking beyond the
+  bump?" model call (major + pinned consumers is a deterministic blocker).
+- `run-tests.sh` now `node --check`s every workflow; the determinism-lint regression guard globs
+  `workflows/*.js`; `check-review-written` fails closed on an unexpected error; the planted-bug
+  smoke test is restored at `docs/smoke/`.
+
+### Fixed
+- `link-discipline` now also catches reference-style escaping link definitions
+  (`[r]: ../../../x.md`) and their `<…>` form — it previously scanned inline links only.
+- Docs: real component counts (5 workflows, 22 hooks), the architecture + authority diagrams,
+  shipped command names in the flow diagrams, and `service.yaml`→`service.json`.
+
 ## [1.0.0] — 2026-06-28
 
 **The plugin is renamed `build-fleet` → `sdd-fleet`, and ships its first multi-repo
