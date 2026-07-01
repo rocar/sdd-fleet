@@ -67,7 +67,7 @@ commands/                     # /sdd-fleet:* slash commands — per-repo: jira-s
                               #   feature-dev, pr-review; product: new-product,
                               #   plan-review, plan-finalize, next-feature,
                               #   product-memory; workspace: epic-plan, epic-ratify,
-                              #   handoff-approve; ops: status, park,
+                              #   next-story, handoff-approve; ops: status, park,
                               #   resolve-escalation, scaffold-workflow.
                               #   (the conductor has NO command — dispatch is plumbing)
 skills/                       # sdd-protocol (+references/), review-rubric,

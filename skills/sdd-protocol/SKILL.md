@@ -141,6 +141,7 @@ BUILD_MODE: standard | deep-build   # selects /sdd-fleet:feature-dev's orchestra
 REVIEW_ROLES: <csv>         # optional — /sdd-fleet:feature-dev roster (>=2 of architect,qa,coder). Default architect,qa,coder. A --roles flag overrides per-run.
 REVIEW_CYCLE_BUDGET: <int>  # optional — /sdd-fleet:feature-dev escalation budget (1..3, clamped to the ceiling). Default 3. A --cycle-budget flag overrides per-run.
 BUILD_CYCLE_BUDGET: <int>   # optional — deep-build escalation budget (1..3, clamped). Default 3. A --cycle-budget flag overrides per-run.
+JIRA_KEY: <KEY>             # optional — external Jira story link, written by jira-story's story-ID intake. Drives the per-phase status sync (see references/workspace-tier.md); readers ignore it, the scribe preserves it, never a status cache.
 UPDATED: <iso8601>
 ```
 
@@ -218,6 +219,11 @@ SPEC ──► REVIEW ──► FINALIZE ──► BUILD ──► CHANGE_REVIEW
           └──┘ (≤3 cycles, then ESCALATE)   └───────┘ (≤3 cycles, then ESCALATE)
 ```
 
+When PROGRESS.md carries a `JIRA_KEY`, every forward phase flip best-effort syncs
+the story's Jira status via the adapter's `phase-transition` verb (see
+`references/workspace-tier.md`) — Jira is the status record plane, never a gate,
+so an outage never blocks a flip.
+
 **SPEC.** `/sdd-fleet:jira-story <slug>` scaffolds `.sdd/<slug>/`, runs the
 classifier subagent to set `TIER` + `BUILD_MODE` in PROGRESS.md, and delegates to
 architect to draft `spec.md` (STATUS=DRAFT) + `acceptance.md` — a minimal
@@ -238,7 +244,8 @@ reviewer-gating hooks stand down while the run is live). The workflow runs four
 phases:
 
 1. **Fan-out** — architect, qa, coder review in parallel; each returns a structured
-   payload `{role, status, concerns:[{id,severity,text}], ac_verdicts:[…]}`. Their
+   payload `{role, status, concerns:[{id,severity,text,criterion?}], ac_verdicts:[…]}`
+   (`criterion` = the mapped AC id, e.g. `AC-2`, when the concern maps to one). Their
    `AgentDefinition.tools` omits `Write`/`Edit`; `AgentDefinition.skills` preloads
    `review-rubric`. **Detection floor (two code-enforced guarantees):** each reviewer
    must return an explicit pass/fail/concern verdict for **every** acceptance
@@ -247,18 +254,26 @@ phases:
    **dedicated adversarial pass** hunts `security` / `money_movement` / `pii`
    *separately* (a required verdict per axis), its non-clear findings entering the
    vote. QA's coverage judgement is grounded in a real `scripts/coverage.sh` capture
-   recorded in IMPL_NOTES.md, not the model's opinion.
+   recorded in IMPL_NOTES.md where coverage tooling exists (hard-gated when
+   `SDD_FLEET_COVERAGE_MIN` is set); a `skip` capture falls back to a
+   matrix-based assessment explicitly labelled as such — never passed off as
+   measurement.
 2. **Cross-examination** — each reviewer must refute or affirm peers' concerns. A
-   refutation must cite spec.md or acceptance.md as structured counter-evidence and
-   come from a different-role reviewer (self-refutation is filtered). There is no
-   character-count floor: whether the reasoning is *sound* is judged in the vote.
-3. **Survival vote** — a structural prefilter (different-role + citation present,
-   pure script) feeds **one neutral, stake-free adjudicator** — the single model
-   call in the vote — which rules per concern whether the refutation is *sound* and
-   whether the citation *resolves*. A concern dies only on `sound && citation_resolves`
-   (fail-safe: it survives otherwise). The cycle is *clean* iff zero surviving
+   refutation must cite spec.md or acceptance.md as structured counter-evidence
+   (file + locator + **verbatim quote**) and come from a different-role reviewer
+   (self-refutation is filtered). There is no character-count floor: whether the
+   reasoning is *sound* is judged in the vote.
+3. **Survival vote** — a structural prefilter (different-role + citation carrying a
+   verbatim quote, pure script; when the run holds artifact text via the command's
+   `artifacts` arg, a quote not found in it discards the refutation before
+   adjudication) feeds **one neutral, stake-free adjudicator** — the single model
+   call in the vote — which rules per concern whether the refutation is *sound*:
+   the reasoning holds and the cited quote supports it (existence is settled by
+   code and never re-ruled). A concern dies only on `sound` (fail-safe: it survives
+   otherwise). The cycle is *clean* iff zero surviving
    `[blocker]` items. The loop is bounded (≤ cycle budget) **and** regression-guarded:
-   each surviving blocker carries a deterministic identity hash, and if the
+   each surviving blocker carries a deterministic identity hash (of its mapped
+   acceptance criterion when one is set, else its normalized text), and if the
    surviving-blocker count does not strictly fall versus the prior cycle the run
    escalates early rather than converging on something worse.
 4. **Apply via scribe** — the scribe applies the structured envelope to PROGRESS.md

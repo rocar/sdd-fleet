@@ -14,6 +14,60 @@ migrated automatically. sdd-fleet assumes a single driver per working tree: one 
 session per worktree, with the `.sdd/ACTIVE` lock serializing acquisition within that worktree
 only (never across clones).
 
+## [1.2.0] — 2026-07-01
+
+**Design-first alignment** — the design documents were ruled the source of truth
+(ADR-0002); this release corrects them where they contradicted their own rules and
+brings the implementation up to everything they ratify. Compatibility: additive —
+`SDD_SCHEMA` stays 1 (new optional `PROGRESS.md` field `JIRA_KEY`; new `.sdd/<slug>/`
+records `COUNTERFACTUAL.md` and `SUITE_RUN.md`); the `SDD_FLEET_*` signal grammar
+gains `SDD_FLEET_NEXT_STORY` (+`_REFUSE`), `SDD_FLEET_JIRA_STORY_INTAKE`,
+`SDD_FLEET_JIRA_SYNC`, `SDD_FLEET_COUNTERFACTUAL_RECORD`, `SDD_FLEET_SUITE_RECORD`.
+The review-workflow `artifacts` arg and refutation `quote` field are additive
+(omitted artifacts keep the existence check inert).
+
+### Added
+- **`/sdd-fleet:next-story <epic>`** — deterministic developer pull entry over the
+  conductor's own `ready-frontier.sh` core (live Jira snapshot + registry; read-only
+  against Jira). The future addition ADR-0001 anticipated, adopted by ADR-0002.
+- **Jira story-ID intake** — `/sdd-fleet:jira-story PAY-1843` reads the story via
+  the adapter's new `read-story` verb as starting context and records `JIRA_KEY`.
+- **Per-phase Jira status sync** — the adapter's `phase-transition` verb maps every
+  forward phase flip (incl. DONE on ship) to a Jira status; best-effort by design,
+  never blocking a flip. Closes the loop epic-completion reads.
+- **counterfactual-gate** — the HANDOFF flip now requires a fresh, change-signature-
+  pinned `COUNTERFACTUAL.md` verdict `pass` (or `skip` + `no-source-change`), recorded
+  by `scripts/counterfactual-record.sh`. The design's Layer-1 counterfactual ▣, now code.
+- **handoff-suite-gate** — the HANDOFF flip requires traceability satisfied and a
+  fresh signature-pinned green suite record (`scripts/suite-record.sh`) — "no handoff
+  on a failing or untraceable suite" is now a hook, not command prose.
+- **Criterion-keyed blocker identity** — review concerns carry an optional
+  `criterion` (AC id); the blocker-identity hash keys on it when present, so a
+  reworded blocker on the same criterion is the *same* blocker across cycles.
+- **Harness-verified citations** — refutation citations require a verbatim `quote`;
+  when the command passes `artifacts` (spec/acceptance/contract/diff text), a quote
+  not found in them discards the refutation in code before adjudication. The
+  adjudicator now rules soundness only (`citation_resolves` removed).
+
+### Changed
+- **CHANGE_REVIEW roster is architect + qa** (ADR-0002: the coder authored the diff;
+  the refuter is never the concern's own author). `change-review.js`'s effective
+  default now matches its sole caller.
+- **Design docs corrected to the ratified design** (`docs/sdd-fleet-design.html`,
+  `docs/sdd-fleet-concept.html`): HANDOFF drawn as devops-shipped with the human
+  gate forced by computed blast radius (not unconditional); the descriptor example
+  is real `service.json` (token grammar, `experimental|production|deprecated`);
+  signal lines use the real `_REFUSE`/`_PASS` + `{"code","reason"}` grammar; AC→test
+  mapping + write-lock shown in BUILD; the dependency gate drawn at the gated
+  HANDOFF flip; Jira materialisation attributed to `epic-ratify`; coverage grounding
+  stated honestly (captured where tooling exists, labelled fallback otherwise).
+- `skills/sdd-protocol` — survival-vote wording (quote-verified citations,
+  sound-only adjudication), criterion-tagged concern payloads, `JIRA_KEY` schema
+  field, per-phase sync note; `references/workspace-tier.md` gains the pull entry,
+  intake, and sync sections and closes the corresponding "Stated limits".
+- Lens agents (`architect`, `coder`, `qa`) — bodies + descriptions now state the
+  structured-payload contract (criterion-tagged concerns, quote-cited refutations).
+
 ## [1.1.0] — 2026-06-29
 
 **Design-conformance hardening** — the Layer-2 oracle gates and the review engine's

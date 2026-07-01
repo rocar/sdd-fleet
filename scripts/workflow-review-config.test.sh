@@ -86,4 +86,49 @@ console.log("passed=" + pass + " failed=" + fail);
 process.exit(fail > 0 ? 1 : 0);
 EOF
 
-node "$TMP/run.js"
+rc=0
+node "$TMP/run.js" || rc=1
+
+# ---- CHANGE_REVIEW effective roster default (ADR-0002 decision 2) ----
+# change-review.js's effective default roster is architect + qa — the coder
+# AUTHORED the diff under review, and "the refuter is never the concern's own
+# author" excludes a coder lens there. The shared LAYER1 parity block keeps the
+# generic 3-role default (review.js's default, pinned above), so change-review.js
+# substitutes a per-file constant at its normalizeRoles call site. Assert (a) the
+# constant exists and normalizes to exactly [architect, qa], and (b) the call site
+# actually consumes it (the constant is load-bearing, not decorative).
+CR="$ROOT/workflows/change-review.js"
+awk '/LAYER1-PURE-HELPERS START/{f=1;next} /LAYER1-PURE-HELPERS END/{f=0;next} f' "$CR" > "$TMP/cr-helpers.js"
+grep -E '^const CHANGE_REVIEW_DEFAULT_ROLES' "$CR" > "$TMP/cr-default.js" || true
+if [ ! -s "$TMP/cr-helpers.js" ] || [ ! -s "$TMP/cr-default.js" ]; then
+  echo "FAIL could not extract LAYER1 helpers + CHANGE_REVIEW_DEFAULT_ROLES from $CR"
+  exit 1
+fi
+cat "$TMP/cr-helpers.js" "$TMP/cr-default.js" - > "$TMP/cr-run.js" <<'EOF'
+
+let pass = 0, fail = 0;
+const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+function check(name, cond) {
+  if (cond) { pass++; console.log("ok   " + name); }
+  else { fail++; console.log("FAIL " + name); }
+}
+let r;
+r = normalizeRoles(CHANGE_REVIEW_DEFAULT_ROLES);
+check("cr-default-architect-qa",   r.error === null && eq(r.roles, ["architect","qa"]));
+check("cr-default-excludes-coder", CHANGE_REVIEW_DEFAULT_ROLES.indexOf("coder") === -1);
+// the SHARED helper's generic default is untouched (parity with review.js holds)
+check("cr-generic-default-intact", eq(normalizeRoles(undefined).roles, ["architect","qa","coder"]));
+console.log("-----");
+console.log("passed=" + pass + " failed=" + fail);
+process.exit(fail > 0 ? 1 : 0);
+EOF
+node "$TMP/cr-run.js" || rc=1
+
+if grep -qE 'normalizeRoles\([^)]*CHANGE_REVIEW_DEFAULT_ROLES' "$CR"; then
+  echo "ok   cr-call-site-consumes-default"
+else
+  echo "FAIL cr-call-site-consumes-default (change-review.js normalizeRoles call site does not consume CHANGE_REVIEW_DEFAULT_ROLES)"
+  rc=1
+fi
+
+exit "$rc"

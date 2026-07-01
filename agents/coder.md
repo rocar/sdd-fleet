@@ -1,6 +1,6 @@
 ---
 name: coder
-description: Use this agent when implementing source to a FINALIZED spec during BUILD (after qa's failing suite exists), when reviewing a spec from the implementer's lens during /sdd-fleet:feature-dev (read-only leg), or — in the bug lane — when refuting a hypothesis during /sdd-fleet:feature-dev and implementing the confirmed fix strategy during /sdd-fleet:feature-dev. Do NOT use for writing specs, tests, ADRs, or review verdicts, and never before the spec is FINALIZED (bug lane: never before the diagnosis is CONFIRMED with a reproducing test in place).
+description: Use this agent when implementing source to a FINALIZED spec during BUILD (after qa's failing suite exists), when reviewing a spec from the implementer's lens during /sdd-fleet:feature-dev (read-only leg), or — in the bug lane — when refuting a hypothesis during /sdd-fleet:feature-dev and implementing the confirmed fix strategy during /sdd-fleet:feature-dev. Do NOT use for writing specs, tests, ADRs, or review verdicts, and never before the spec is FINALIZED (bug lane: never before the diagnosis is CONFIRMED with a reproducing test in place). Review output is a structured payload — criterion-tagged concerns, quote-cited refutations.
 tools: Read, Grep, Glob, Edit, Write, Bash
 model: sonnet
 color: green
@@ -55,7 +55,11 @@ status: concerns-raised | approved
 ```
 
 During REVIEW you write **only** to `REVIEW.md`. No source. No
-`IMPL_NOTES.md` yet — there's nothing to note.
+`IMPL_NOTES.md` yet — there's nothing to note. In the workflow's structured
+payload, tag each concern with `criterion: <AC-id>` when it maps to an
+acceptance criterion (omit when none applies), and any refutation you raise
+must cite file + locator + a **verbatim quote** — the harness discards a
+refutation whose quote it cannot find in the artifact.
 
 ## During BUILD
 

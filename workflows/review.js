@@ -45,6 +45,12 @@ export const meta = {
 // `cycle_budget` (optional) sets the escalation budget, an integer 1..3; default 3.
 //   Configurable DOWNWARD only — the sdd-protocol 3-cycle ceiling is a hard cap.
 //   Omitting BOTH reproduces the historical behavior exactly.
+// `artifacts` (optional) — a flat map of artifact name → VERBATIM text the command
+//   holds for this run, e.g. { "spec": "...", "acceptance": "...", "contract": "...",
+//   "diff": "..." } (any subset; string values only). Feeds the deterministic
+//   citation-existence check (ADR-0002 decision 4): a refutation whose verbatim
+//   quote is not found — whitespace-normalized — in any held text is discarded by
+//   code before adjudication. Absent/empty → the existence check is inert.
 
 // The Workflow runtime may deliver `args` as a JSON string rather than a parsed
 // object (confirmed empirically during Phase 6 validation). Normalize.
@@ -76,6 +82,19 @@ const criteria = Array.isArray(A.criteria) ? A.criteria.filter((c) => typeof c =
 // drives the cross-service concern and (only for the contested minor/patch-with-pinned
 // case) the single "breaking beyond the bump?" model call. Absent → no such concern.
 const semver = A.semver && typeof A.semver === "object" ? A.semver : null;
+
+// Artifact text HELD by the workflow (ADR-0002 decision 4 — code checks what code
+// can check). The dispatching command MAY pass the verbatim text of the reviewable
+// artifacts (spec/acceptance/contract/diff) in A.artifacts; the citation-existence
+// check (quoteFoundInArtifacts, in the vote helpers) verifies a refutation's
+// verbatim quote against these texts. Absent/empty → the check is inert (backward
+// compatible: quote PRESENCE is still required by validCitation).
+const artifactTexts = [];
+if (A.artifacts && typeof A.artifacts === "object" && !Array.isArray(A.artifacts)) {
+  for (const k of Object.keys(A.artifacts)) {
+    if (typeof A.artifacts[k] === "string" && A.artifacts[k].length > 0) artifactTexts.push(A.artifacts[k]);
+  }
+}
 
 // Scribe result schema — declared HERE, above the first applyScribe() call site
 // (the invalid-args guard just below, and the survival-vote apply later). The
@@ -199,6 +218,11 @@ const CONCERNS_SCHEMA = {
           id: { type: "string" },
           severity: { type: "string", enum: ["blocker", "major", "minor"] },
           text: { type: "string" },
+          // Optional: the acceptance-criterion id (e.g. "AC-3") this concern maps
+          // to; omitted when none applies. blockerIdentity prefers it, so "same
+          // blocker across cycles" compares the mapped criterion (ADR-0002), not
+          // the concern's wording.
+          criterion: { type: "string" },
         },
       },
     },
@@ -238,13 +262,18 @@ const REFUTATION_SCHEMA = {
           verdict: { type: "string", enum: ["refute", "affirm"] },
           reason: { type: "string" },
           // Required (validated in JS) when verdict is "refute"; omitted on "affirm".
+          // `quote` is a VERBATIM excerpt from the cited artifact — the harness
+          // checks it deterministically against the artifact text it holds
+          // (ADR-0002 decision 4) and DISCARDS the refutation when it is absent
+          // or not found; existence is never a model verdict.
           citation: {
             type: "object",
             additionalProperties: false,
-            required: ["file", "locator"],
+            required: ["file", "locator", "quote"],
             properties: {
               file: { type: "string" },
               locator: { type: "string" },
+              quote: { type: "string" },
             },
           },
         },
@@ -254,9 +283,12 @@ const REFUTATION_SCHEMA = {
 };
 
 // The single model call in the survival vote: a neutral, stake-free adjudicator
-// rules, per contested concern, whether the refutation's reasoning is SOUND and
-// whether its citation RESOLVES (the cited line truly exists and supports it).
-// Replaces the char-count proxy. A concern dies only on sound && citation_resolves.
+// rules, per contested concern, whether the refutation is SOUND — the reasoning
+// holds AND the quoted citation genuinely SUPPORTS it. Citation EXISTENCE is NOT
+// a model verdict: code already checked the verbatim quote against the artifact
+// text the workflow holds (ADR-0002 decision 4 — the old citation_resolves
+// verdict is gone), and a refutation whose quote was not found never reaches this
+// call. A concern dies only on sound === true.
 const ADJUDICATION_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -267,11 +299,10 @@ const ADJUDICATION_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["concern_id", "sound", "citation_resolves"],
+        required: ["concern_id", "sound"],
         properties: {
           concern_id: { type: "string" },
           sound: { type: "boolean" },
-          citation_resolves: { type: "boolean" },
           note: { type: "string" },
         },
       },
@@ -436,11 +467,14 @@ const refutationMap = mergeRefutations(ROLES, xaResults);
 phase("Survival vote");
 
 // (a) Structural prefilter (pure, no model): different-role "refute"s carrying a
-// citation. The char-count proxy is gone — soundness is judged next, by a model.
-const contested = collectContested(allConcerns, refutationMap);
+// citation whose verbatim quote is FOUND in the artifact text the workflow holds
+// (the deterministic existence check, ADR-0002 decision 4). The char-count proxy
+// is gone — soundness is judged next, by a model.
+const contested = collectContested(allConcerns, refutationMap, artifactTexts);
 
 // (b) The SINGLE model call in the vote: one neutral, stake-free adjudicator rules
-// whether each contested refutation is SOUND and whether its citation RESOLVES.
+// whether each contested refutation is SOUND (reasoning holds AND the quoted
+// citation genuinely supports it — existence was already checked by code).
 // Skipped entirely when nothing is contested (no cost). A null/garbled result is
 // fail-safe — applyAdjudications leaves the concern standing (a concern survives
 // unless properly refuted).
@@ -454,7 +488,7 @@ if (contested.length > 0) {
   adjudications = adj && Array.isArray(adj.verdicts) ? adj.verdicts : [];
 }
 
-// (c) Apply (pure): a concern dies iff its refutation was adjudicated sound + resolved.
+// (c) Apply (pure): a concern dies iff its refutation was adjudicated SOUND.
 const surviving = applyAdjudications(allConcerns, contested, adjudications);
 const survivingBlockers = surviving.filter((c) => c.severity === "blocker" && !c.refuted);
 // Stamp a deterministic identity on each surviving blocker so "same blocker
@@ -511,7 +545,8 @@ function reviewPrompt(role, feature, cycle, criteria) {
 You MUST return one ac_verdicts entry for EVERY criterion above — there is no
 "silent" option. For each: verdict "pass" (the spec satisfies it cleanly), "concern"
 (addressed but with a reservation), or "fail" (the spec does not satisfy it). For any
-"fail"/"concern", ALSO raise a matching item in concerns. A missing verdict for any
+"fail"/"concern", ALSO raise a matching item in concerns, with its criterion field set
+to that criterion's id. A missing verdict for any
 criterion makes the whole review incomplete and it re-runs.`
       : `\n\nNo acceptance-criterion ids were supplied — return ac_verdicts as an empty array.`;
   return `You are the ${role} reviewer. Cycle ${cycle}. Active feature: ${feature}.
@@ -527,8 +562,10 @@ use it for severity definitions (blocker / major / minor).${acBlock}
 Return your review as the structured object you are required to produce:
 - role: "${role}"
 - status: "concerns-raised" if you have any blocker/major items, else "approved"
-- concerns: array of { id, severity, text }. Use stable IDs "${role}-1", "${role}-2", ...
-  If you have no findings, return an empty concerns array and status "approved".
+- concerns: array of { id, severity, text, criterion? }. Use stable IDs "${role}-1", "${role}-2", ...
+  Set criterion to the acceptance-criterion id (e.g. "AC-2") the concern maps to —
+  it is the concern's stable identity across cycles — and OMIT it when no criterion
+  applies. If you have no findings, return an empty concerns array and status "approved".
 - ac_verdicts: array of { criterion, verdict ("pass"|"fail"|"concern"), note? } — one per acceptance criterion above.`;
 }
 
@@ -576,11 +613,14 @@ Below are concerns raised by OTHER reviewers (not your own). For each, decide wh
 REFUTE it (you believe it is not a real problem) or AFFIRM it (you agree it stands).
 
 A refutation must carry a structured citation pointing at the evidence. On every "refute"
-entry, set the citation field to { file, locator } — e.g. { "file": "spec.md", "locator":
-"§ Constraints" } or { "file": "acceptance.md", "locator": "line 12" }. A refute without a
-citation is discarded by the script. A NEUTRAL ADJUDICATOR then rules whether your
-reasoning is SOUND and whether the cited line truly RESOLVES — so make the reasoning
-genuinely support the citation; length/padding does not help. If you cannot substantively
+entry, set the citation field to { file, locator, quote } — e.g. { "file": "spec.md",
+"locator": "§ Constraints", "quote": "Refunds must be idempotent across retries." }.
+quote is a VERBATIM excerpt copied from the cited artifact: the harness checks it
+against the artifact text it holds and DISCARDS the refutation when the quote is
+missing or not found (existence is code-checked, never adjudicated). A refute without
+a citation is discarded by the script. A NEUTRAL ADJUDICATOR then rules whether your
+reasoning is SOUND — i.e. the quoted evidence genuinely supports the refutation;
+length/padding does not help. If you cannot substantively
 refute, AFFIRM — the safe default (no citation needed on an affirm).
 You cannot refute your own concerns (the script filters self-refutation).
 
@@ -590,7 +630,7 @@ ${JSON.stringify(peers, null, 2)}
 Return the structured object:
 - role: "${role}"
 - refutations: array of { concern_id, verdict ("refute"|"affirm"), reason, citation? }.
-  citation = { file, locator } and is REQUIRED when verdict is "refute".
+  citation = { file, locator, quote } and is REQUIRED when verdict is "refute".
   Include one entry per peer concern.`;
 }
 
@@ -604,22 +644,31 @@ You have Read/Grep/Glob. READ the cited artifacts yourself before ruling:
 - any contract a citation names.
 
 Below are concerns whose refutations passed the structural filter (a DIFFERENT-role
-reviewer refuted them WITH a citation). For each concern, rule on its candidate refutation(s):
-- citation_resolves: does the cited file + locator actually EXIST and genuinely
-  SUPPORT the refutation? (Not merely "is a citation present" — does it RESOLVE.)
-- sound: does the refutation's reasoning actually hold — i.e. is the original
-  concern truly NOT a real problem?
-A concern is removed ONLY when BOTH are true. When in doubt, set sound=false — the
+reviewer refuted them WITH a citation whose verbatim quote the harness already
+verified exists in the artifact text it holds — existence is settled; do not re-rule
+it). For each concern, rule on its candidate refutation(s):
+- sound: does the refutation actually hold — the reasoning is valid, the quoted
+  citation genuinely SUPPORTS it, and the original concern is truly NOT a real
+  problem?
+A concern is removed ONLY when sound is true. When in doubt, set sound=false — the
 safe default keeps the concern (the floor under detection).
 
 Contested concerns (each with its candidate refutations):
 ${JSON.stringify(contested, null, 2)}
 
 Return the structured object:
-- verdicts: array of { concern_id, sound, citation_resolves, note? } — exactly ONE
+- verdicts: array of { concern_id, sound, note? } — exactly ONE
   entry per concern_id listed above.`;
 }
 
+// --- LAYER2-VOTE-HELPERS START — concern merge, deterministic blocker identity, citation-existence check + regression-guarded verdict ---
+// Extracted VERBATIM by scripts/workflow-vote-logic.test.sh — keep PURE: no
+// agent()/log()/args, deterministic, side-effect-free (so the real source is the
+// thing tested, never a copy).
+//
+// mergeConcerns(reviews): flatten the reviewers' structured payloads into the
+// single concern list the vote operates on. Carries the optional mapped
+// acceptance criterion (ADR-0002 — blockerIdentity prefers it); absent/blank → null.
 function mergeConcerns(reviews) {
   const out = [];
   for (const r of reviews) {
@@ -629,6 +678,7 @@ function mergeConcerns(reviews) {
         severity: c.severity,
         raised_by: r.role,
         text: c.text,
+        criterion: typeof c.criterion === "string" && c.criterion.trim().length > 0 ? c.criterion : null,
         refuted: false,
         refuted_by: null,
         refutation_reason: null,
@@ -638,6 +688,9 @@ function mergeConcerns(reviews) {
   return out;
 }
 
+// mergeRefutations(roles, xaResults): flatten the cross-examination payloads into
+// a concern_id → candidate-refutation map. The citation (file/locator/quote) rides
+// along verbatim for the code-side gates below.
 function mergeRefutations(roles, xaResults) {
   const map = {};
   roles.forEach((role, i) => {
@@ -655,11 +708,6 @@ function mergeRefutations(roles, xaResults) {
   return map;
 }
 
-// --- LAYER2-VOTE-HELPERS START — deterministic blocker identity + regression-guarded verdict ---
-// Extracted VERBATIM by scripts/workflow-vote-logic.test.sh — keep PURE: no
-// agent()/log()/args, deterministic, side-effect-free (so the real source is the
-// thing tested, never a copy).
-//
 // blockerIdentity(concern): a stable hash of the concern's identity so "same
 // blocker across cycles" is a deterministic comparison (design §02). Prefers the
 // mapped acceptance criterion when the reviewer supplied one, else the normalized
@@ -687,30 +735,64 @@ function computeVerdict(o) {
   return "revise";
 }
 
-// validCitation: a structured citation is valid when file + locator are non-empty
-// strings (NOT validated against a fixed file list — "§ Constraints"/"line 12"
-// against any cited artifact is acceptable; whether it RESOLVES is the
-// adjudicator's call, below).
+// validCitation: a structured citation is valid when file + locator + quote are
+// non-empty strings (NOT validated against a fixed file list — "§ Constraints"/
+// "line 12" against any cited artifact is acceptable). The quote is the verbatim
+// excerpt the existence check below verifies; whether the citation SUPPORTS the
+// refutation is the adjudicator's call.
 function validCitation(c) {
   return (
     !!c &&
     typeof c.file === "string" && c.file.trim().length > 0 &&
-    typeof c.locator === "string" && c.locator.trim().length > 0
+    typeof c.locator === "string" && c.locator.trim().length > 0 &&
+    typeof c.quote === "string" && c.quote.trim().length > 0
   );
 }
 
-// collectContested(concerns, refutationMap): the structural prefilter (pure, no
-// model). A refutation is ELIGIBLE only when it is a DIFFERENT-ROLE "refute"
-// carrying a citation — the two code-side survival gates (different role + citation
-// present). The old MIN_REFUTATION_CHARS length proxy is GONE: whether the
-// reasoning is SOUND and the citation RESOLVES is the adjudicator's single model
-// call, not a character count (design §02 — "replaces the char-count that only
-// pretended to judge soundness").
-function collectContested(concerns, refutationMap) {
+// normalizeQuoteText(s): collapse whitespace runs and trim so a verbatim quote
+// matches across line wraps / re-indentation. Case is PRESERVED — the quote is
+// verbatim, not a paraphrase.
+function normalizeQuoteText(s) {
+  return typeof s === "string" ? s.replace(/\s+/g, " ").trim() : "";
+}
+
+// quoteFoundInArtifacts(quote, artifactTexts): the deterministic citation-existence
+// check (ADR-0002 decision 4 — code checks what code can check). True iff the
+// whitespace-normalized quote is a substring of a whitespace-normalized held
+// artifact text. When the command passed NO artifact text, the check is inert
+// (true) — existence is unverifiable here and stays with the adjudicator's support
+// judgement; quote PRESENCE is still required by validCitation.
+function quoteFoundInArtifacts(quote, artifactTexts) {
+  const texts = Array.isArray(artifactTexts)
+    ? artifactTexts.filter((t) => typeof t === "string" && t.length > 0)
+    : [];
+  if (texts.length === 0) return true;
+  const q = normalizeQuoteText(quote);
+  if (!q) return false;
+  for (const t of texts) {
+    if (normalizeQuoteText(t).indexOf(q) !== -1) return true;
+  }
+  return false;
+}
+
+// collectContested(concerns, refutationMap, artifactTexts): the structural
+// prefilter (pure, no model). A refutation is ELIGIBLE only when it is a
+// DIFFERENT-ROLE "refute" carrying a citation whose verbatim quote is FOUND in the
+// held artifact text — the three code-side survival gates (different role +
+// citation present + quote exists). A refutation whose quote is not found is
+// DISCARDED here, before adjudication — the same consequence as a missing
+// citation. The old MIN_REFUTATION_CHARS length proxy is GONE: whether the
+// reasoning is SOUND is the adjudicator's single model call, not a character count
+// (design §02 — "replaces the char-count that only pretended to judge soundness").
+function collectContested(concerns, refutationMap, artifactTexts) {
   const out = [];
   for (const c of concerns) {
     const candidates = (refutationMap[c.id] || []).filter(
-      (r) => r.verdict === "refute" && r.role !== c.raised_by && validCitation(r.citation)
+      (r) =>
+        r.verdict === "refute" &&
+        r.role !== c.raised_by &&
+        validCitation(r.citation) &&
+        quoteFoundInArtifacts(r.citation.quote, artifactTexts)
     );
     if (candidates.length > 0) {
       out.push({ id: c.id, raised_by: c.raised_by, severity: c.severity, text: c.text, candidates });
@@ -720,10 +802,11 @@ function collectContested(concerns, refutationMap) {
 }
 
 // applyAdjudications(concerns, contested, adjudications): apply (pure). A concern
-// dies iff the neutral adjudicator ruled its refutation SOUND and its citation
-// RESOLVES. A missing/false/garbled verdict leaves the concern standing —
-// fail-safe: a concern survives unless it is PROPERLY refuted (the design's "floor
-// under detection"). The record keeps the first eligible candidate's attribution.
+// dies iff the neutral adjudicator ruled its refutation SOUND (citation existence
+// was already verified by code in collectContested — ADR-0002 decision 4). A
+// missing/false/garbled verdict leaves the concern standing — fail-safe: a concern
+// survives unless it is PROPERLY refuted (the design's "floor under detection").
+// The record keeps the first eligible candidate's attribution.
 function applyAdjudications(concerns, contested, adjudications) {
   const byId = {};
   for (const v of adjudications || []) {
@@ -734,7 +817,7 @@ function applyAdjudications(concerns, contested, adjudications) {
   return concerns.map((c) => {
     const v = byId[c.id];
     const ct = contestedById[c.id];
-    if (!ct || !v || v.sound !== true || v.citation_resolves !== true) return c;
+    if (!ct || !v || v.sound !== true) return c;
     const r = ct.candidates[0];
     return {
       ...c,
@@ -780,6 +863,9 @@ function adversarialConcerns(adv) {
         severity: sev,
         raised_by: "adversary",
         text: `[${ax}] ${f}`,
+        // A risk-axis finding has no mapped acceptance criterion — its identity is
+        // its normalized text (blockerIdentity's fallback).
+        criterion: null,
         refuted: false,
         refuted_by: null,
         refutation_reason: null,
@@ -805,7 +891,9 @@ function crossServiceConcerns(semver, breakingVerdict) {
       ? semver.pinned_consumers.join(", ")
       : `${pc} consumer(s)`;
   const base = `[cross-service] ${semver.contract} ${semver.old}->${semver.new} (${semver.bump}) reaches ${pc} pinned consumer(s): ${who}.`;
-  const mk = (text) => [{ id: "cross-service-1", severity: "blocker", raised_by: "cross-service", text, refuted: false, refuted_by: null, refutation_reason: null }];
+  // criterion: null — a contract-bump concern maps to no acceptance criterion;
+  // its identity is its normalized text (blockerIdentity's fallback).
+  const mk = (text) => [{ id: "cross-service-1", severity: "blocker", raised_by: "cross-service", text, criterion: null, refuted: false, refuted_by: null, refutation_reason: null }];
   if (semver.bump === "major") {
     return mk(`${base} A major (breaking) bump breaks pinned consumers — re-spec additively or coordinate a migration via ADR.`);
   }

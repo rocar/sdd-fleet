@@ -43,6 +43,39 @@ guard_story_payload "$tampered" storyA member-a EPIC-9 2>/dev/null; eq "guard-ta
 eq "decide-noop"       "$(decide_transition Dispatched Dispatched)" "noop"
 eq "decide-transition" "$(decide_transition 'To Do' Dispatched)"    "transition"
 
+# phase_to_status: the ONE deterministic phase->Jira-status mapping (ADR-0002 §3).
+# DISPATCHED is NOT in this mapping — it stays on the untouched jira-transition verb.
+eq "phase-SPEC"          "$(phase_to_status SPEC)"          "In Spec"
+eq "phase-REVIEW"        "$(phase_to_status REVIEW)"        "In Review"
+eq "phase-BUILD"         "$(phase_to_status BUILD)"         "In Progress"
+eq "phase-CHANGE_REVIEW" "$(phase_to_status CHANGE_REVIEW)" "In Change Review"
+eq "phase-HANDOFF"       "$(phase_to_status HANDOFF)"       "In Handoff"
+eq "phase-DONE"          "$(phase_to_status DONE)"          "Done"
+phase_to_status DISPATCHED >/dev/null 2>&1; eq "phase-DISPATCHED-not-mapped" "$?" "1"
+phase_to_status BOGUS      >/dev/null 2>&1; eq "phase-unknown-rejected"      "$?" "1"
+eq "phase-env-override" "$(JIRA_STATUS_BUILD='Doing' phase_to_status BUILD)" "Doing"
+
+# map_issue_response: a single Jira issue -> the read-story shape (labels -> id/repo/
+# consumes, status mapping, parent epic, ADF description flattened to plain text)
+ISSUE='{"key":"PAY-1843","fields":{"summary":"Add payment intent","status":{"name":"To Do"},
+ "labels":["sdd-id:payment-intent","sdd-repo:svc-pay","sdd-consumes:ledger-api@2"],
+ "parent":{"key":"PAY-1800"},
+ "description":{"type":"doc","version":1,"content":[{"type":"paragraph","content":[{"type":"text","text":"sdd-fleet story payment-intent."},{"type":"text","text":" Vault holds the plan."}]}]}}}'
+story="$(map_issue_response "$ISSUE")"
+eq "read-map-key"      "$(q "$story" '.key')" "PAY-1843"
+eq "read-map-id"       "$(q "$story" '.id')" "payment-intent"
+eq "read-map-summary"  "$(q "$story" '.summary')" "Add payment intent"
+eq "read-map-status"   "$(q "$story" '.status')" "NOT_STARTED"
+eq "read-map-repo"     "$(q "$story" '.repo')" "svc-pay"
+eq "read-map-consumes" "$(q "$story" '.consumes[0]')" "ledger-api@2"
+eq "read-map-epic"     "$(q "$story" '.epic')" "PAY-1800"
+case "$(q "$story" '.description')" in *"payment-intent."*"Vault holds the plan."*) ok "read-map-adf-description" ;; *) bad "read-map-adf-description" "[$(q "$story" '.description')]" ;; esac
+# a raw (unmapped) Jira status passes through untouched; null description -> ""
+ISSUE2='{"key":"PAY-9","fields":{"summary":"x","status":{"name":"Blocked"},"labels":[],"description":null}}'
+story2="$(map_issue_response "$ISSUE2")"
+eq "read-map-status-raw" "$(q "$story2" '.status')" "Blocked"
+eq "read-map-null-desc"  "$(q "$story2" '.description')" ""
+
 # map_search_response: labels -> id/repo/consumes; status mapping (NOT_STARTED / DISPATCHED / raw)
 SEARCH='{"issues":[
  {"key":"SDD-2","fields":{"status":{"name":"To Do"},"labels":["sdd-id:storyA","sdd-repo:member-a"]}},
@@ -80,6 +113,29 @@ eq "dryrun-snapshot-shape" "$(q "$out" '.epic')" "EP-1"
 eq "dryrun-snapshot-empty" "$(q "$out" '.stories|length')" "0"
 out="$(SDD_JIRA_DRYRUN=1 bash "$ADAPTER" jira-transition --epic-key EP-1 --story storyA --to Dispatched --now N 2>/dev/null)"
 eq "dryrun-transition" "$(q "$out" '.status')" "transitioned"
+
+# read-story: unconfigured -> safe defer; dryrun -> the shape + a recorded request
+out="$(bash "$ADAPTER" read-story --key PAY-1843 --now N 2>/dev/null)"; rc=$?
+eq "read-story-unconfigured-exit0"  "$rc" "0"
+eq "read-story-unconfigured-signal" "$(q "$out" '.status')" "unconfigured"
+rrec="$work/rrec"; : > "$rrec"
+out="$(SDD_JIRA_DRYRUN=1 SDD_JIRA_RECORD="$rrec" bash "$ADAPTER" read-story --key PAY-1843 --now N 2>/dev/null)"
+eq "dryrun-read-story-key" "$(q "$out" '.key')" "PAY-1843"
+grep -q 'PAY-1843' "$rrec" && ok "dryrun-read-story-recorded" || bad "dryrun-read-story-recorded"
+bash "$ADAPTER" read-story --now N >/dev/null 2>&1
+[ $? -eq 0 ] || true   # unconfigured short-circuits; the arg check is a dryrun-mode concern
+SDD_JIRA_DRYRUN=1 bash "$ADAPTER" read-story --now N >/dev/null 2>&1; rc=$?
+eq "read-story-missing-key-exit2" "$rc" "2"
+
+# phase-transition: dryrun contract; unknown phase fails closed (exit 2)
+out="$(SDD_JIRA_DRYRUN=1 bash "$ADAPTER" phase-transition --key PAY-1843 --phase BUILD --now N 2>/dev/null)"
+eq "dryrun-phase-transition"       "$(q "$out" '.status')" "transitioned"
+eq "dryrun-phase-transition-to"    "$(q "$out" '.to')" "In Progress"
+eq "dryrun-phase-transition-phase" "$(q "$out" '.phase')" "BUILD"
+SDD_JIRA_DRYRUN=1 bash "$ADAPTER" phase-transition --key PAY-1843 --phase BOGUS --now N >/dev/null 2>&1; rc=$?
+eq "phase-transition-unknown-exit2" "$rc" "2"
+SDD_JIRA_DRYRUN=1 bash "$ADAPTER" phase-transition --key PAY-1843 --now N >/dev/null 2>&1; rc=$?
+eq "phase-transition-missing-phase-exit2" "$rc" "2"
 
 # real-payload body-leak: the RECORDED create-story request body carries the id + vault
 # pointer and NONE of the plan/contract markers
@@ -122,6 +178,7 @@ case "$method:$url" in
   POST:*/search/jql)        code=200; body="${STUB_SEARCH:-$def_search}" ;;
   GET:*/transitions)        code=200; body="${STUB_TRANS:-$def_trans}" ;;
   POST:*/transitions)       code=204; body='{}' ;;
+  GET:*/rest/api/3/issue/*) code=200; body="${STUB_ISSUE:-{}}" ;;
 esac
 [ -n "$out" ] && printf '%s' "$body" > "$out"
 printf '%s' "$code"
@@ -150,6 +207,30 @@ out="$(PATH="$stub:$PATH" STUB_LOG="$work/.slog" STUB_SEARCH="$SR_TODO" env "${L
 eq "live-transition-transitioned" "$(q "$out" '.status')" "transitioned"
 out="$(PATH="$stub:$PATH" STUB_LOG="$work/.slog" STUB_SEARCH="$SR_DISP" env "${LIVE_ENV[@]}" JIRA_STATUS_DISPATCHED=Dispatched bash "$ADAPTER" jira-transition --epic-key SDD-10 --story storyA --to Dispatched --now N 2>/dev/null)"
 eq "live-transition-noop" "$(q "$out" '.status')" "noop"
+
+# live read-story: GET the issue by key, mapped through map_issue_response
+ISS_LIVE='{"key":"SDD-11","fields":{"summary":"Live story","status":{"name":"To Do"},"labels":["sdd-id:storyA","sdd-repo:member-a"],"parent":{"key":"SDD-10"},"description":null}}'
+out="$(PATH="$stub:$PATH" STUB_LOG="$work/.slog" STUB_ISSUE="$ISS_LIVE" env "${LIVE_ENV[@]}" bash "$ADAPTER" read-story --key SDD-11 --now N 2>/dev/null)"
+eq "live-read-story-key"    "$(q "$out" '.key')" "SDD-11"
+eq "live-read-story-id"     "$(q "$out" '.id')" "storyA"
+eq "live-read-story-status" "$(q "$out" '.status')" "NOT_STARTED"
+eq "live-read-story-epic"   "$(q "$out" '.epic')" "SDD-10"
+
+# live phase-transition by KEY (no epic/search): current status -> mapped target.
+# happy path: issue sits at "In Spec", transitions offer "In Progress" -> transitioned
+ISS_SPEC='{"key":"SDD-11","fields":{"status":{"name":"In Spec"}}}'
+TR_BUILD='{"transitions":[{"id":"41","to":{"name":"In Progress"}}]}'
+out="$(PATH="$stub:$PATH" STUB_LOG="$work/.slog" STUB_ISSUE="$ISS_SPEC" STUB_TRANS="$TR_BUILD" env "${LIVE_ENV[@]}" bash "$ADAPTER" phase-transition --key SDD-11 --phase BUILD --now N 2>/dev/null)"
+eq "live-phase-transitioned"    "$(q "$out" '.status')" "transitioned"
+eq "live-phase-transitioned-to" "$(q "$out" '.to')" "In Progress"
+# noop: already at the mapped status
+ISS_BUILD='{"key":"SDD-11","fields":{"status":{"name":"In Progress"}}}'
+out="$(PATH="$stub:$PATH" STUB_LOG="$work/.slog" STUB_ISSUE="$ISS_BUILD" env "${LIVE_ENV[@]}" bash "$ADAPTER" phase-transition --key SDD-11 --phase BUILD --now N 2>/dev/null)"
+eq "live-phase-noop" "$(q "$out" '.status')" "noop"
+# no legal transition into the target -> exit 1 (fail visibly, callers treat as best-effort)
+TR_NONE='{"transitions":[{"id":"7","to":{"name":"Somewhere Else"}}]}'
+out="$(PATH="$stub:$PATH" STUB_LOG="$work/.slog" STUB_ISSUE="$ISS_SPEC" STUB_TRANS="$TR_NONE" env "${LIVE_ENV[@]}" bash "$ADAPTER" phase-transition --key SDD-11 --phase BUILD --now N 2>/dev/null)"; rc=$?
+eq "live-phase-no-transition-exit1" "$rc" "1"
 
 echo "-----"
 echo "passed=$pass failed=$fail"

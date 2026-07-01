@@ -1,5 +1,5 @@
 ---
-description: Open a Jira story as a forward feature or an unknown-cause bug — scaffold .sdd/<slug>/, acquire the ACTIVE lock, run the classifier (tier / severity), and (feature) have the architect draft spec.md + acceptance.md. The per-repo intent entry; advance the item with /sdd-fleet:feature-dev.
+description: Open a Jira story as a forward feature or an unknown-cause bug — accept a Jira story key (e.g. PAY-1843, read via the jira-adapter as starting context) or a slug, scaffold .sdd/<slug>/, acquire the ACTIVE lock, run the classifier (tier / severity), and (feature) have the architect draft spec.md + acceptance.md. Syncs the story's Jira status (best-effort) at each phase flip it owns. The per-repo intent entry; advance the item with /sdd-fleet:feature-dev.
 allowed-tools: Read, Edit, Bash, Task
 ---
 
@@ -30,15 +30,55 @@ spec STATUS contract.
 
 ## Arguments
 
-`$ARGUMENTS` — `<slug> [feature details…]`:
+`$ARGUMENTS` — `<slug | JIRA-KEY> [feature details…]`:
 
-- The **first whitespace-delimited token is the feature slug** (kebab-case, no
-  whitespace). If `$ARGUMENTS` is empty, refuse and surface that the user must
-  supply a slug.
+- The **first whitespace-delimited token is either a Jira story key or the feature
+  slug**. If it matches a Jira issue key — uppercase project prefix, a dash, digits
+  (`^[A-Z][A-Z0-9]*-[0-9]+$`, e.g. `PAY-1843`) — follow **Jira story-ID intake**
+  below first. Otherwise it is the feature slug (kebab-case, no whitespace). If
+  `$ARGUMENTS` is empty, refuse and surface that the user must supply a slug or a
+  story key.
 - **Everything after the first token is an optional inline feature description**
   (free text), trimmed. When present it is the authoritative description for this
   run (see step 5, "Establish the feature description") and is the channel headless
   / `claude -p` callers use to supply detail.
+
+## Jira story-ID intake (key argument)
+
+When the first token is a Jira story key, the Jira story is the **starting
+context** (this is how a story dispatched by the conductor — or surfaced by
+`/sdd-fleet:next-story` — is picked up in its member repo). Before step 1:
+
+1. **Read the story via the adapter** (deterministic; never invent story content):
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/jira-adapter.sh" read-story --key "<KEY>" --now "<iso8601 now>"
+   ```
+   - JSON with `.key` → intake succeeded. Continue below.
+   - `{"status":"unconfigured"}` or a non-zero exit → the key cannot be read and a
+     Jira key is not a usable slug. Refuse:
+     ```
+     SDD_FLEET_REFUSE: {"command":"jira-story","code":2,"reason":"jira-story-unreadable","key":"<KEY>"}
+     ```
+     Tell the user to configure the adapter (`SDD_JIRA_LIVE=1` + `JIRA_*` creds)
+     or re-run with a slug + inline description. Stop.
+2. **Derive the slug**: the story's `id` field (the `sdd-id` label — the epic
+   plan's node slug) when non-empty; else the lowercased key (`pay-1843`).
+3. **Seed the description**: the story's `summary` + `description` (the id + a
+   vault pointer for materialised stories) become the starting description for
+   step 5 — inline detail after the key, when present, still wins as the
+   authoritative description (source 1); the story text then serves as inherited
+   context. If the description names the workspace vault, read the governing
+   epic's context only through the artifacts already available in this repo —
+   never by `../` path-walking into the superproject.
+4. **Carry the key forward**: record `JIRA_KEY: <KEY>` in PROGRESS.md (step 3) —
+   the external-ID link (an identity, like `JIRA_LINK.md` at the estate level;
+   **never** a status cache — Jira owns status) that the per-phase Jira sync
+   keys off.
+5. **Emit** (before prose):
+   ```
+   SDD_FLEET_JIRA_STORY_INTAKE: {"key":"<KEY>","slug":"<slug>","repo":"<repo|''>","status":"<jira status>"}
+   ```
+   Then continue with step 1 using the derived slug.
 
 ## What you do
 
@@ -94,6 +134,23 @@ spec STATUS contract.
    `BUILD_CYCLE_BUDGET` (escalation budgets, 1–3, clamped to the 3-cycle ceiling). A
    command flag overrides these per run; the workflow validates them and falls back to
    these defaults if absent. Leaving them as-is reproduces the historical behavior.
+
+   **Jira-keyed features only:** append `JIRA_KEY: <KEY>` (from the story-ID
+   intake). It is the external-ID link the per-phase Jira status sync keys off;
+   readers ignore unknown fields, and the scribe preserves it. Omit the line
+   entirely for a slug-based feature — its absence means "no Jira story to sync."
+
+3b. **Sync the story's Jira status — SPEC (best-effort, deterministic).** If
+   PROGRESS.md carries a `JIRA_KEY:`, run:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/jira-adapter.sh" phase-transition --key "<JIRA_KEY>" --phase SPEC --now "<iso8601 now>"
+   ```
+   Emit `SDD_FLEET_JIRA_SYNC: {"key":"<KEY>","phase":"SPEC","result":"<transitioned|noop|skipped|error>"}`
+   (`skipped` = no `JIRA_KEY` / adapter unconfigured; `error` = the adapter
+   failed). **Best-effort by design: a Jira outage or refusal NEVER blocks the
+   scaffold or any later step** — Jira is the intent/status record plane, not a
+   gate (`CLAUDE.md`: one fact, one store; the vault stays the source of truth).
+   Never retry-loop; note the miss and continue — the next phase flip re-syncs.
 
 4. **Scaffold `.sdd/.gitignore`, if absent.** (`.sdd/ACTIVE` was already
    written by step 1's acquire — do not write it again.) If `.sdd/.gitignore`
@@ -332,6 +389,10 @@ spec STATUS contract.
 - `acquire-active.sh acquire` exits 1 (another item holds the lock) → refuse
   with `{"code":2,"reason":"active-feature-conflict"}`.
 - `$ARGUMENTS` is empty → refuse.
+- The first token is a Jira story key but `read-story` cannot read it (adapter
+  unconfigured or errored) → refuse with
+  `{"code":2,"reason":"jira-story-unreadable","key":"<KEY>"}` (a Jira key is not
+  a usable slug; the sync steps, by contrast, are best-effort and never refuse).
 - `.sdd/<slug>/` already exists → refuse; ask the user whether to resume or
   pick a new slug. (Release the lock you just acquired —
   `bash "${CLAUDE_PLUGIN_ROOT}/scripts/acquire-active.sh" release "<slug>"` —

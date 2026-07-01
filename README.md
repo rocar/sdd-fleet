@@ -691,6 +691,7 @@ execution.
 |---|---|---|
 | `/sdd-fleet:epic-plan <epic-slug>` | PLAN | Scaffolds `workspace/.sdd/_epic/<slug>/`; architect authors `plan.md` (the cross-repo dependency DAG) + `contracts.md` (the contract design). Vault-only — no Jira, no registry, no gate. |
 | `/sdd-fleet:epic-ratify <epic-slug> [ratify]` | PLAN → RATIFIED | **Human-only** (not model-invocable). Bare = dry-run (prints the plan + contract design, halts). `ratify` writes `RATIFICATION.md` (pinning a plan+contracts digest), then deterministically materialises the epic + one Jira story per plan node. `ratify force` records consciously-accepted concerns. |
+| `/sdd-fleet:next-story <epic-slug>` | — | Deterministic pull entry: resolves the epic's next ready story from the live Jira snapshot + registry via the conductor's own `ready-frontier` core; emits the story (does not auto-start — start it with `/sdd-fleet:jira-story <story key>`). |
 
 **Product tier:**
 
@@ -706,13 +707,13 @@ execution.
 
 | Command | Phase | What it does |
 |---|---|---|
-| `/sdd-fleet:jira-story <slug> [details]` | SPEC | Scaffolds `.sdd/<slug>/`, runs the classifier, has PO draft `spec.md` + `acceptance.md`. Takes the feature description from an optional inline `[details]` arg (wins), else the conversation, else a backlog intent; asks in a structured clarify loop if none is usable. Inherits the product stack if present. |
+| `/sdd-fleet:jira-story <slug> [details]` | SPEC | Scaffolds `.sdd/<slug>/`, runs the classifier, has PO draft `spec.md` + `acceptance.md`. Takes the feature description from an optional inline `[details]` arg (wins), else the conversation, else a backlog intent; asks in a structured clarify loop if none is usable. Inherits the product stack if present. A Jira story key (e.g. `PAY-1843`) as the first arg instead reads that story via the adapter as starting context and records `JIRA_KEY` in PROGRESS.md, enabling per-phase status sync. |
 | `/sdd-fleet:jira-story` | — | Re-classifies the active feature (query-only). |
 | `/sdd-fleet:feature-dev` | REVIEW | Runs the adversarial review workflow. (Skipped for trivial.) Accepts `--roles` / `--cycle-budget` (else `REVIEW_ROLES` / `REVIEW_CYCLE_BUDGET`). |
 | `/sdd-fleet:feature-dev` | FINALIZE → BUILD | Gate only: refuses on open blockers; on pass flips the spec to FINALIZED. Idempotent — re-running is a safe no-op. |
 | `/sdd-fleet:feature-dev` | BUILD | Orchestrates BUILD: qa drafts the failing suite first, then coder implements (routes to the deep-build workflow when `BUILD_MODE=deep-build`). |
 | `/sdd-fleet:feature-dev` | BUILD | Directly dispatches the fan-out build workflow (normally invoked for you by `/sdd-fleet:feature-dev`); also the iteration entry point. Accepts `--cycle-budget` (else `BUILD_CYCLE_BUDGET`). |
-| `/sdd-fleet:pr-review` | CHANGE_REVIEW → HANDOFF | architect + PO + qa review the diff; refuses if tests are missing/failing. On pass devops ships, the backlog flips, and the loop advances. |
+| `/sdd-fleet:pr-review` | CHANGE_REVIEW → HANDOFF | architect + qa review the diff (the coder authored it — no self-review); refuses if tests are missing/failing. The HANDOFF flip is gated in code (dependency · counterfactual · suite · blast radius); on pass devops ships, the backlog flips, and the loop advances. |
 | `/sdd-fleet:handoff-approve [approve]` | HANDOFF (gate) | **Human-only** (not model-invocable). Approves a blast-radius-risky HANDOFF. Bare = dry-run preview of the radius; `approve` records `HANDOFF_APPROVAL.md` pinned to the current blast-radius signature (a widened radius invalidates it → re-approve). |
 | `/sdd-fleet:status` | — | Prints active feature state, open concerns, cycle counts, the product backlog, and the next unblocked feature. **Bug-lane aware:** `LANE: bug` → phase / `SEV` / `diagnosis.md` STATUS / cycles. |
 | `/sdd-fleet:park <reason>` | any → PARKED | **Human-only** (not model-invocable). Records the parked state in PROGRESS.md and frees `.sdd/ACTIVE` — the sanctioned sev0-preemption path. Workspace stays intact. |
@@ -758,7 +759,10 @@ Representative signals: `SDD_FLEET_CLASSIFICATION`, `SDD_FLEET_WORKFLOW_LAUNCHED
 `SDD_FLEET_FINALIZE_PASS` / `_REFUSE`, `SDD_FLEET_BUILD_COMPLETE`,
 `SDD_FLEET_PLAN_FINALIZE_DRYRUN` / `_PASS` / `_REFUSE`,
 `SDD_FLEET_BACKLOG_FLIP`, `SDD_FLEET_LOOP_ADVANCE`, `SDD_FLEET_NEXT_FEATURE`
-(+ `_REFUSE` / `_NEEDS_DESC`), `SDD_FLEET_DEVOPS_OK` / `_REFUSED`,
+(+ `_REFUSE` / `_NEEDS_DESC`), `SDD_FLEET_NEXT_STORY` (+ `_REFUSE`),
+`SDD_FLEET_JIRA_STORY_INTAKE`, `SDD_FLEET_JIRA_SYNC`,
+`SDD_FLEET_COUNTERFACTUAL_RECORD`, `SDD_FLEET_SUITE_RECORD`,
+`SDD_FLEET_DEVOPS_OK` / `_REFUSED`,
 `SDD_FLEET_PARKED`, `SDD_FLEET_RESOLVED`, `SDD_FLEET_ACTIVE_CONFLICT`,
 `SDD_FLEET_REFUSE` (whose JSON carries `{"code": <int>, "reason": "<slug>"}`
 — refusal dispatch keys on the reason, never on a process exit code).
@@ -922,6 +926,8 @@ session per working tree; parallel clones are not serialized against each other.
 | `epic-ratified-before-fanout` | Blocks spec'ing a story whose governing epic is not ratified — resolves the superproject and reads the epic's `RATIFICATION.md` (digest-checked against the current plan). Inert for standalone repos. |
 | `dependency-gate` | At the `PROGRESS.md → HANDOFF` transition, blocks an undeclared cross-service edge: a diff line matching a registry contract's `client_signature` whose contract isn't in `consumes[]`, or a `consumes[]` token with no published version. Inert for standalone / non-git repos. |
 | `handoff-blast-radius-gate` | Forces a human gate at the HANDOFF transition when a change's blast radius is risky (≥ N transitive consumers, or `money_movement` / `pii` on a reached consumer or the changed service itself). Allowed only when `HANDOFF_APPROVAL.md` carries a `BLAST_RADIUS_SIGNATURE` matching the *current* radius — a widened radius goes stale and re-blocks. |
+| `counterfactual-gate` | At the `PROGRESS.md → HANDOFF` transition, requires a fresh `.sdd/<slug>/COUNTERFACTUAL.md` record (written by `scripts/counterfactual-record.sh`, pinned to the change signature) with verdict `pass` (or `skip` + `REASON: no-source-change`) — no handoff unless the suite demonstrably fails when the change is reverted. Any later source/tests edit stales the record and re-blocks. |
+| `handoff-suite-gate` | At the same transition, requires AC→test traceability satisfied at flip time **and** a fresh `SUITE_RUN.md` recording `RESULT: green` (written by `scripts/suite-record.sh`, signature-pinned) — no handoff on a failing, unrecorded, or untraceable suite. |
 | `block-publish-before-handoff` | Blocks a `registry/<contract>/<semver>.json` publish unless the active feature is at HANDOFF, so a contract can't reach the registry before the blast-radius gate has fired. |
 | `registry-append-only` | Refuses to overwrite an already-published `registry/<contract>/<semver>.json` — published versions are immutable; recovery is forward-only (bump the version). |
 | `cdc-gate` | Blocks a contract publish that violates any registered consumer expectation (same major, `required_operations ⊆ operations`, `required_fields ⊆ fields`). |

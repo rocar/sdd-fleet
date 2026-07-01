@@ -198,7 +198,7 @@
       <div class="pill p1"><div class="k">Replay</div><h4>Re-derive, don't recollect</h4><p>Every run reconstructs from the vault record — an auditor re-derives the decision instead of trusting anyone's memory of it.</p></div>
       <div class="pill p3"><div class="k">Hard gates</div><h4>Sign-off by computation</h4><p>A change touching money-movement or PII data, or reaching N downstream consumers, forces a human gate — by code, not by a reviewer remembering to.</p></div>
       <div class="pill p2"><div class="k">Multi-repo</div><h4>Contracts hold the estate together</h4><p>Published contracts are versioned and append-only; pinned consumers are stopped automatically on a breaking bump.</p></div>
-      <div class="pill p4"><div class="k">Precision</div><h4>Auditable &amp; replayable, not merely fast</h4><p>Every acceptance criterion maps to a test before code; the oracle is real coverage output, not the model's opinion of it.</p></div>
+      <div class="pill p4"><div class="k">Precision</div><h4>Auditable &amp; replayable, not merely fast</h4><p>Every acceptance criterion maps to a test before code; QA reads captured coverage output where tooling exists — never its own opinion of it.</p></div>
     </div>
 
     <div class="note" style="border-left-color:var(--human)"><b>Where humans stay in the loop.</b> Four points require a human signature — enforced by the harness, not left to convention:</div>
@@ -223,12 +223,12 @@
     </div>
 
     <ol class="trace">
-      <li><b>SPEC</b> — the spec and acceptance criteria are authored into the vault <span class="mono">.sdd/PAY-1843/</span>. Each criterion is mapped to a test path, and those paths are <b>write-locked</b> for the run so the oracle can't be edited to pass.</li>
+      <li><b>SPEC</b> — the spec and acceptance criteria are authored into the vault <span class="mono">.sdd/PAY-1843/</span>. A <b>testability floor</b> refuses any criterion that isn't decidable — no "works correctly", no TBD.</li>
       <li><b>REVIEW</b> — three role lenses fan out and an adversarial pass flags a <b>money-movement</b> concern on the payout path. It survives the vote, so it becomes a blocker the loop must resolve.</li>
-      <li><b>FINALIZE ▣</b> — a fail-closed gate refuses to let <em>any</em> source be written until the spec is finalized and every criterion is traceable to a test. <span class="mono">SDD_FLEET_FINALIZE: {"ok":false,"reason":"untraceable_criterion"}</span> → resolved, then green.</li>
-      <li><b>BUILD</b> — code is generated against the finalized spec; the write-locked tests are the oracle it has to satisfy.</li>
+      <li><b>FINALIZE ▣</b> — a fail-closed gate refuses to freeze the spec while review blockers stand. <span class="mono">SDD_FLEET_FINALIZE_REFUSE: {"code":2,"reasons":["open-blockers"]}</span> → resolved, then <span class="mono">SDD_FLEET_FINALIZE_PASS</span>. No source can be written before this flip.</li>
+      <li><b>BUILD</b> — tests first: every criterion is mapped to a failing test (a fail-closed gate refuses source until the mapping is complete), then the test paths are <b>write-locked</b> so the oracle can't be edited to pass; code is generated to turn the locked suite green.</li>
       <li><b>CHANGE_REVIEW</b> — blast radius is computed from the derived service catalog: this endpoint's contract has <b>4 pinned consumers</b>, and the data carries <span class="mono">money_movement</span>.</li>
-      <li><b>HANDOFF ◆</b> — either condition alone forces a human gate, regardless of the machine verdict. Handoff is <b>blocked</b> until a human signs off and the traceable suite passes. <span class="mono">SDD_FLEET_HANDOFF: {"ok":false,"reason":"human_gate_required"}</span></li>
+      <li><b>HANDOFF ◆</b> — either condition alone forces a human gate, regardless of the machine verdict. The fail-closed gate <b>blocks</b> the handoff until a human signs off, and the approval is pinned to the computed blast-radius signature — it goes stale if the radius widens. <span class="mono">SDD_FLEET_HANDOFF_APPROVE_PASS: {"feature":"PAY-1843","signature":"…"}</span></li>
     </ol>
     <figcaption style="margin-top:14px;font-size:.9rem;color:var(--ink-soft)">The model drafted and reviewed; <b>code</b> counted the vote, computed the blast radius, and held every gate; a <b>human</b> signed the money-movement release. The full trail is replayable from <span class="mono">.sdd/</span>.</figcaption>
   </div>
@@ -340,7 +340,7 @@
       <span class="st gate">FINALIZE ▣</span><span class="arr">→</span>
       <span class="st">BUILD</span><span class="arr">→</span>
       <span class="st">CHANGE_REVIEW</span><span class="arr">→</span>
-      <span class="st gate">HANDOFF ◆</span>
+      <span class="st hgate">HANDOFF ◆</span>
     </div>
 
     <div class="borrow">
@@ -413,14 +413,14 @@
           <path class="edge" d="M324,51 L360,76"/><path class="edge" d="M324,83 L360,83"/><path class="edge" d="M324,115 L360,90"/>
           <rect x="362" y="60" width="150" height="46" rx="7" class="n-code"/>
           <text class="lbl" x="437" y="80" text-anchor="middle" fill="#0a4a5c">VOTE ▣</text>
-          <text class="sub" x="437" y="96" text-anchor="middle">a count, not a call</text>
+          <text class="sub" x="437" y="96" text-anchor="middle">coded filters · one adjudicator</text>
           <path class="edge" d="M512,83 H556"/>
           <rect x="558" y="60" width="160" height="46" rx="7" class="n"/>
           <text class="lbl" x="638" y="80" text-anchor="middle">survives / dies</text>
           <text class="sub" x="638" y="96" text-anchor="middle">deterministic outcome</text>
         </svg>
       </div>
-      <figcaption><b>The shape both share.</b> An independent agent challenges another agent's output; a code-level count — never a model's ad-hoc call — decides survival. sdd-fleet's REVIEW and CHANGE_REVIEW run exactly this engine on a spec or a diff.</figcaption>
+      <figcaption><b>The shape both share.</b> An independent agent challenges another agent's output; code filters and counts the votes, with one neutral model adjudicator ruling on contested soundness inside the count. sdd-fleet's REVIEW and CHANGE_REVIEW run this engine on a spec or a diff.</figcaption>
     </figure>
 
     <div class="two">

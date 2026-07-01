@@ -1,6 +1,6 @@
 ---
 name: qa
-description: Use this agent when designing or writing tests against acceptance.md (TEST_PLAN.md + the failing suite, before coder runs), reviewing a spec for testability during /sdd-fleet:feature-dev, or reviewing the diff for coverage gaps and running the counterfactual during /sdd-fleet:pr-review. In the bug lane it authors the failing reproduction test for /sdd-fleet:feature-dev and runs the revert-counterfactual for /sdd-fleet:feature-dev. Do NOT use for implementing source, authoring specs, or writing ADRs.
+description: Use this agent when designing or writing tests against acceptance.md (TEST_PLAN.md + the failing suite, before coder runs), reviewing a spec for testability during /sdd-fleet:feature-dev, or reviewing the diff for coverage gaps and running the counterfactual during /sdd-fleet:pr-review. In the bug lane it authors the failing reproduction test for /sdd-fleet:feature-dev and runs the revert-counterfactual for /sdd-fleet:feature-dev. Do NOT use for implementing source, authoring specs, or writing ADRs. Review output is a structured payload — criterion-tagged concerns, quote-cited refutations.
 tools: Read, Grep, Glob, Edit, Write, Bash
 model: sonnet
 color: yellow
@@ -72,7 +72,11 @@ status: concerns-raised | approved
 In workflow REVIEW, the workflow's envelope post-condition rejects any reviewer
 that returns an empty or malformed concerns payload. On non-workflow paths
 (CHANGE_REVIEW, direct invocation), the `check-review-written` hook (SubagentStop)
-enforces the same boundary — you must append the block before stopping.
+enforces the same boundary — you must append the block before stopping. In the
+workflow's structured payload, tag each concern with `criterion: <AC-id>` when
+it maps to an acceptance criterion (omit when none applies), and any refutation
+you raise must cite file + locator + a **verbatim quote** — the harness discards
+a refutation whose quote it cannot find in the artifact.
 
 ## During BUILD
 

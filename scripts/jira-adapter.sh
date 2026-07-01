@@ -10,6 +10,16 @@
 #   create-story   --epic-key <k> --story <id> --repo <r> --now <iso>      -> JIRA_KEY: <key>
 #   jira-snapshot  --epic-key <k> --now <iso>   -> {"epic","stories":[{id,key,status,consumes,repo}]}
 #   jira-transition --epic-key <k> --story <id> --to <status> --now <iso>  -> {"status":"transitioned"|"noop"}
+#   read-story     --key <JIRA-KEY> --now <iso>
+#       -> {"key","id","summary","status","repo","consumes":[],"epic","description"}
+#       (the /sdd-fleet:jira-story story-ID intake; description is the ADF text flattened)
+#   phase-transition --key <JIRA-KEY> --phase <SPEC|REVIEW|BUILD|CHANGE_REVIEW|HANDOFF|DONE> --now <iso>
+#       -> {"status":"transitioned"|"noop","key","phase","to"}
+#       (ADR-0002 §3 per-phase status sync. Deterministic phase->status mapping via
+#        phase_to_status; addresses the issue DIRECTLY by key — no epic search. Callers
+#        treat it as BEST-EFFORT: Jira is the intent/status record plane, never a gate.
+#        DISPATCHED is deliberately NOT in this mapping — it stays on the untouched
+#        jira-transition verb the conductor depends on.)
 #
 # Three modes (DEFAULT = safe):
 #   unconfigured (neither flag)        -> prints {"status":"unconfigured"} and exits 0; callers
@@ -81,6 +91,35 @@ map_search_response() { # <epic-key> <search-json>  -> the snapshot shape
 decide_transition() { # <current-mapped-status> <target>  -> "noop" | "transition"
   if [ "$1" = "$2" ]; then printf 'noop'; else printf 'transition'; fi
 }
+# THE deterministic per-repo phase -> Jira status mapping (ADR-0002 §3). Pure: env
+# defaults only, no clock, no network. Unknown phase -> return 1 (fail closed).
+# DISPATCHED is intentionally absent: it belongs to jira-transition (conductor seam).
+phase_to_status() { # <PHASE> -> mapped Jira status name on stdout; 1 on unknown phase
+  case "$1" in
+    SPEC)          printf '%s' "${JIRA_STATUS_SPEC:-In Spec}" ;;
+    REVIEW)        printf '%s' "${JIRA_STATUS_REVIEW:-In Review}" ;;
+    BUILD)         printf '%s' "${JIRA_STATUS_BUILD:-In Progress}" ;;
+    CHANGE_REVIEW) printf '%s' "${JIRA_STATUS_CHANGE_REVIEW:-In Change Review}" ;;
+    HANDOFF)       printf '%s' "${JIRA_STATUS_HANDOFF:-In Handoff}" ;;
+    DONE)          printf '%s' "${JIRA_STATUS_DONE:-Done}" ;;
+    *) return 1 ;;
+  esac
+}
+map_issue_response() { # <issue-json>  -> the read-story shape
+  printf '%s' "$1" | jq -c --arg ns "${JIRA_STATUS_NOTSTARTED:-To Do}" --arg disp "${JIRA_STATUS_DISPATCHED:-Dispatched}" '
+    def lbl($p): (.fields.labels // [] | map(select(startswith($p))) | (.[0] // "") | sub("^"+$p; ""));
+    def adf_text: [.. | objects | select(.type? == "text") | .text] | join("");
+    {key:      .key,
+     id:       lbl("sdd-id:"),
+     summary:  (.fields.summary // ""),
+     status:   ((.fields.status.name // "") | if . == $ns then "NOT_STARTED" elif . == $disp then "DISPATCHED" else . end),
+     repo:     lbl("sdd-repo:"),
+     consumes: (.fields.labels // [] | map(select(startswith("sdd-consumes:"))) | map(sub("^sdd-consumes:"; ""))),
+     epic:     (.fields.parent.key // ""),
+     description: (if .fields.description == null then ""
+                   elif (.fields.description | type) == "string" then .fields.description
+                   else (.fields.description | adf_text) end)}'
+}
 
 # ---------------- I/O helpers (live only) ----------------
 _record() { # <method> <url> <body>
@@ -119,13 +158,27 @@ _live_transition() { # <epic-key> <slug> <target-status>
   _post "${JIRA_BASE_URL}/rest/api/3/issue/${key}/transitions" "$(jq -nc --arg id "$tid" '{transition:{id:$id}}')" >/dev/null || return 1
   printf '{"status":"transitioned","story":"%s","to":"%s"}\n' "$2" "$3"
 }
+_live_transition_by_key() { # <issue-key> <target-status> <phase-label>
+  local resp cur tresp tid
+  resp="$(_get "${JIRA_BASE_URL}/rest/api/3/issue/$1?fields=status")" || return 1
+  cur="$(printf '%s' "$resp" | jq -r '.fields.status.name // empty')"
+  [ -n "$cur" ] || { echo "jira-adapter: phase-transition: no status readable on $1" >&2; return 1; }
+  if [ "$(decide_transition "$cur" "$2")" = noop ]; then
+    printf '{"status":"noop","key":"%s","phase":"%s","to":"%s"}\n' "$1" "$3" "$2"; return 0
+  fi
+  tresp="$(_get "${JIRA_BASE_URL}/rest/api/3/issue/$1/transitions")" || return 1
+  tid="$(printf '%s' "$tresp" | jq -r --arg d "$2" '.transitions[]? | select(.to.name==$d) | .id' | head -n1)"
+  [ -n "$tid" ] || { echo "jira-adapter: no transition into '$2' for $1" >&2; return 1; }
+  _post "${JIRA_BASE_URL}/rest/api/3/issue/$1/transitions" "$(jq -nc --arg id "$tid" '{transition:{id:$id}}')" >/dev/null || return 1
+  printf '{"status":"transitioned","key":"%s","phase":"%s","to":"%s"}\n' "$1" "$3" "$2"
+}
 
 # ---------------- main (runs only when executed, not when sourced) ----------------
 _jira_adapter_main() {
   set -uo pipefail
   command -v jq >/dev/null 2>&1 || { echo "jira-adapter: jq is required — failing closed." >&2; return 2; }
   local verb="${1:-}"; shift 2>/dev/null || true
-  local slug="" epic_key="" story="" repo="" to="" now=""
+  local slug="" epic_key="" story="" repo="" to="" now="" issue_key="" phase=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --slug) slug="${2:-}"; shift 2 ;;
@@ -134,6 +187,8 @@ _jira_adapter_main() {
       --repo) repo="${2:-}"; shift 2 ;;
       --to) to="${2:-}"; shift 2 ;;
       --now) now="${2:-}"; shift 2 ;;
+      --key) issue_key="${2:-}"; shift 2 ;;
+      --phase) phase="${2:-}"; shift 2 ;;
       *) echo "jira-adapter: unknown argument '$1'" >&2; return 2 ;;
     esac
   done
@@ -188,6 +243,25 @@ _jira_adapter_main() {
         printf '{"status":"transitioned","story":"%s","to":"%s"}\n' "$story" "${to:-DISPATCHED}"; return 0
       fi
       _live_transition "$epic_key" "$story" "${to:-$disp}" ;;
+    read-story)
+      [ -n "$issue_key" ] || { echo "jira-adapter: read-story requires --key" >&2; return 2; }
+      url="${base}/rest/api/3/issue/${issue_key}?fields=summary,status,labels,description,parent"
+      if [ "$mode" = dryrun ]; then
+        _record GET "$url" '{}'
+        jq -nc --arg k "$issue_key" '{key:$k,id:"",summary:"",status:"",repo:"",consumes:[],epic:"",description:""}'
+        return 0
+      fi
+      resp="$(_get "$url")" || return 1
+      map_issue_response "$resp" ;;
+    phase-transition)
+      { [ -n "$issue_key" ] && [ -n "$phase" ]; } || { echo "jira-adapter: phase-transition requires --key + --phase" >&2; return 2; }
+      local target
+      target="$(phase_to_status "$phase")" || { echo "jira-adapter: unknown phase '$phase' (SPEC|REVIEW|BUILD|CHANGE_REVIEW|HANDOFF|DONE)" >&2; return 2; }
+      if [ "$mode" = dryrun ]; then
+        _record POST "${base}/rest/api/3/issue/${issue_key}/transitions" "$(jq -nc --arg k "$issue_key" --arg p "$phase" --arg t "$target" '{key:$k,phase:$p,to:$t}')"
+        printf '{"status":"transitioned","key":"%s","phase":"%s","to":"%s"}\n' "$issue_key" "$phase" "$target"; return 0
+      fi
+      _live_transition_by_key "$issue_key" "$target" "$phase" ;;
     *) echo "jira-adapter: unknown verb '$verb'" >&2; return 2 ;;
   esac
 }

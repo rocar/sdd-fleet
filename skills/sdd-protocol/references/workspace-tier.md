@@ -207,6 +207,13 @@ the existing write-only `create-epic`/`create-story`:
 - `jira-snapshot --epic-key <k> --now <iso>` → `{"epic":"<k>","stories":[{"id","key","status","consumes":["<c>@<major>"],"repo"}]}` — the live story set; the conductor reads `status` + the projected `consumes` edges **only from here**, never from `plan.md`.
 - `jira-transition --epic-key <k> --story <id> --to DISPATCHED --now <iso>` → `{"status":"transitioned"|"noop"}` — **idempotent** (a no-op when already dispatched).
 
+Two further verbs serve the **per-repo** side of the loop (they are not conductor
+verbs — the conductor's runtime lock still admits only `jira-snapshot` +
+`jira-transition`):
+
+- `read-story --key <JIRA-KEY> --now <iso>` → `{"key","id","summary","status","repo","consumes":[],"epic","description"}` — a single story by key; the `/sdd-fleet:jira-story` story-ID intake.
+- `phase-transition --key <JIRA-KEY> --phase <SPEC|REVIEW|BUILD|CHANGE_REVIEW|HANDOFF|DONE> --now <iso>` → `{"status":"transitioned"|"noop","key","phase","to"}` — the per-phase status sync (below). The phase→status mapping is deterministic code in the adapter (`phase_to_status`; instance names override via `JIRA_STATUS_SPEC`/`_REVIEW`/`_BUILD`/`_CHANGE_REVIEW`/`_HANDOFF`/`_DONE`), addresses the issue **directly by key** (no epic search), and is idempotent. `DISPATCHED` is deliberately **not** in this mapping — it stays on the untouched `jira-transition` verb the conductor depends on.
+
 **A real backend ships: `scripts/jira-adapter.sh` (Jira Cloud REST, not MCP).** The seam is a
 deterministic CLI invoked by *modelless* shell, so it is backed by the **Jira REST API** (curl +
 API-token Basic Auth) — not the Atlassian MCP server, which is a model-facing JSON-RPC server an
@@ -246,18 +253,62 @@ Claude session (a separate, optional registration) — just not as this determin
   per-story create/transition path are unaffected; the test fixture supplies edges, `plan.md`
   authoritative on any conflict.)
 
-A dispatched story is intended to be picked up by the per-repo `/sdd-fleet:jira-story <id>`
-machine and run through the §2 (per-repo) state machine.
+## The developer pull entry — `/sdd-fleet:next-story <epic>`
 
-- *Real story-ID intake from Jira + the vault is deferred → the design's "pinned neighbourhood
-  snapshot" does not exist yet.* Today `/sdd-fleet:jira-story` is the slug-based feature-intake
-  command: it does **not** read a Jira issue by ID (the `jira-adapter` has no read-single-story
-  verb), nor does it inherit the governing epic's ratified `contracts.md`/`plan.md`, nor pin a
-  dependency-version snapshot from `workspace/.sdd/_epic/<epic>/`. What IS enforced in code is the
-  ratification PRECONDITION (the `epic-ratified-before-fanout` hook blocks spec'ing a story whose
-  governing epic is not ratified), and per-feature intent flows via the product backlog seed; only
-  the Jira-read + vault contract-design inheritance + the pinned snapshot are the deferred part.
-  This lands with live conductor dispatch (it shares the edge-projection prerequisite above).
+The pull-mode counterpart ADR-0001 anticipated, now shipped: `/sdd-fleet:next-story <epic>`
+is a thin command over **`scripts/next-story.sh`** — the epic-tier analog of
+`next-feature.sh`'s *resolve → signal → let the dispatcher start the work*. It reuses the
+conductor's **exact** machinery (the live `jira-snapshot` + the `ready-frontier.sh` pure
+set-logic core), so the pull entry and the autonomous conductor can never disagree about
+readiness. It resolves the sorted frontier's first ready story and emits
+`SDD_FLEET_NEXT_STORY` (or a `_REFUSE` with `{"code","reason"}`); the dispatcher then runs
+`/sdd-fleet:jira-story <key>` in the target member repo. It is **not a second conductor**:
+read-only against Jira (`jira-snapshot` only — never a transition, never a create; gated by
+`next-story.test.sh`'s adapter-log lock), no prioritization policy, `--now` injected, and
+the vault touched only to resolve the epic key from `JIRA_LINK.md`. It shares the
+edge-projection limit above: until `consumes` stamping lands, every `NOT_STARTED` story
+looks ready.
+
+## Story intake and per-phase status sync — the per-repo half of the loop
+
+A dispatched (or `next-story`-surfaced) story is picked up in its member repo by
+**`/sdd-fleet:jira-story <JIRA-KEY>`**: an argument matching a Jira issue key (e.g.
+`PAY-1843`) is read via the adapter's `read-story` verb as the **starting context** —
+the `sdd-id` label supplies the slug, the summary/description seed the feature
+description, and the command records `JIRA_KEY: <key>` in that feature's PROGRESS.md
+(an external-ID link, exactly like `JIRA_LINK.md` at the estate level — **never** a
+status cache; Jira owns status). A non-key argument falls back to the slug-based
+intake unchanged.
+
+**Every forward phase flip syncs the story's Jira status** (ADR-0002 decision 3), as an
+explicit deterministic step in the command that owns the flip, via
+`phase-transition --key <JIRA_KEY> --phase <PHASE>`:
+
+| Flip owner | Phase synced |
+|---|---|
+| `/sdd-fleet:jira-story` (scaffold) | SPEC |
+| `/sdd-fleet:feature-dev` (review dispatch) | REVIEW |
+| `/sdd-fleet:feature-dev` (finalize gate pass) | BUILD |
+| `/sdd-fleet:pr-review` (change-review dispatch) | CHANGE_REVIEW |
+| `/sdd-fleet:pr-review` (devops handoff) | HANDOFF |
+| `/sdd-fleet:pr-review` (ship complete, after `SDD_FLEET_DEVOPS_OK`) | **DONE** |
+
+The sync is **best-effort by design**: a Jira outage or an unconfigured adapter never
+blocks a phase flip — Jira is the intent/status *record plane*, not a gate; the vault
+stays the source of truth and the next flip re-syncs (each sync emits an audited
+`SDD_FLEET_JIRA_SYNC` line, `skipped`/`error` included, and never retry-loops). The
+**DONE** sync is the close-out the estate depends on: epic completion is *derived from
+Jira story states* (see "Derived status"), and the conductor/`next-story` `done` counts
+read the same statuses — before this sync existed, nothing could ever mark a story DONE
+and an epic could never complete.
+
+**Still deferred from the design's story intake:** the "pinned neighbourhood snapshot" —
+inheriting the governing epic's ratified `contracts.md`/`plan.md` design and pinning a
+dependency-version snapshot from `workspace/.sdd/_epic/<epic>/` into the member repo. The
+Jira read itself is closed (above); the vault-inheritance half shares the edge-projection
+prerequisite and lands with live conductor dispatch. What IS enforced in code today is the
+ratification PRECONDITION (the `epic-ratified-before-fanout` hook blocks spec'ing a story
+whose governing epic is not ratified).
 
 ## Promotion of lessons is human-confirmed
 

@@ -1,5 +1,5 @@
 ---
-description: Own CHANGE_REVIEW and the ship for the active item — dispatch the change-review workflow (architect + qa, adjudicated survival vote, deterministic counterfactual, bounded regression-guarded loop) over the implemented change, then on a clean verdict ship via devops, release the lock, and flip the backlog (forward HANDOFF, or bug ship-fix / sev0 hotfix).
+description: Own CHANGE_REVIEW and the ship for the active item — dispatch the change-review workflow (architect + qa, adjudicated survival vote, deterministic counterfactual, bounded regression-guarded loop) over the implemented change, then on a clean verdict ship via devops, release the lock, and flip the backlog (forward HANDOFF, or bug ship-fix / sev0 hotfix). Each phase flip it owns syncs the story's Jira status (best-effort, never blocking), including the DONE close-out on a shipped story.
 allowed-tools: Read, Edit, Bash, Task, Workflow
 ---
 
@@ -91,10 +91,13 @@ skill. Consult it for the CHANGE_REVIEW phase, the CHANGE_CYCLE budget
    reverts ONLY the coder's source change (keeping the qa-authored tests), runs the
    suite, and emits the verdict — you do not judge the red/green delta:
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/counterfactual.sh"
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/counterfactual-record.sh" <slug> --now <iso8601>
    ```
-   Capture the verdict from its `SDD_FLEET_COUNTERFACTUAL: {…}` line (`pass` | `fail`
-   | `skip`) and record it in `IMPL_NOTES.md`. You **pass it to the workflow**
+   Capture the verdict from its `SDD_FLEET_COUNTERFACTUAL_RECORD: {…}` line (`pass`
+   | `fail` | `skip`) — it runs the counterfactual engine AND writes
+   `.sdd/<slug>/COUNTERFACTUAL.md`, pinned to the current change signature; the
+   **counterfactual gate** requires that record, fresh, at the step-9 HANDOFF flip.
+   Still note the verdict in `IMPL_NOTES.md` and **pass it to the workflow**
    (step 8b) as a VOTE INPUT: a `fail` becomes a blocker in the survival vote there —
    you do not adjudicate it yourself.
 
@@ -113,9 +116,23 @@ skill. Consult it for the CHANGE_REVIEW phase, the CHANGE_CYCLE budget
 
 8b. **Invoke the Workflow tool.** Call `Workflow` with:
    - `scriptPath`: `${CLAUDE_PLUGIN_ROOT}/workflows/change-review.js`
-   - `args`: `{ "feature": "<slug>", "cycle": <new_cycle>, "now": "<iso8601>", "run_id": "<id from step 8>", "roles": ["architect","qa"], "counterfactual": "<pass|fail|skip from step 7>" }` — **plus** `"prior_blockers": <n>` from PROGRESS.md `CHANGE_SURVIVING_BLOCKERS` when present (**omit on the first change cycle** so the regression guard is disabled for cycle 1), **plus** `"criteria": [<AC ids>]` parsed from `.sdd/<slug>/acceptance.md` (or the spec's inline `## Acceptance Criteria`) so the workflow requires a per-AC verdict from every reviewer (silence impossible); omit/empty when there are no `AC-N` ids. **Plus** `"semver": <json>` when the change bumps a PUBLISHED contract: run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/semver-check.sh" <contract> --old <published-semver> --new <new-semver> --root <workspace-root>` and pass its JSON — the workflow raises the cross-service concern (major+pinned = deterministic blocker; minor/patch+pinned = one "breaking beyond the bump?" model call). Omit when there's no contract change / registry / pinned consumers.
+   - `args`: `{ "feature": "<slug>", "cycle": <new_cycle>, "now": "<iso8601>", "run_id": "<id from step 8>", "roles": ["architect","qa"], "counterfactual": "<pass|fail|skip from step 7>" }` — **plus** `"prior_blockers": <n>` from PROGRESS.md `CHANGE_SURVIVING_BLOCKERS` when present (**omit on the first change cycle** so the regression guard is disabled for cycle 1), **plus** `"criteria": [<AC ids>]` parsed from `.sdd/<slug>/acceptance.md` (or the spec's inline `## Acceptance Criteria`) so the workflow requires a per-AC verdict from every reviewer (silence impossible); omit/empty when there are no `AC-N` ids. **Plus** `"semver": <json>` when the change bumps a PUBLISHED contract: run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/semver-check.sh" <contract> --old <published-semver> --new <new-semver> --root <workspace-root>` and pass its JSON — the workflow raises the cross-service concern (major+pinned = deterministic blocker; minor/patch+pinned = one "breaking beyond the bump?" model call). Omit when there's no contract change / registry / pinned consumers. **Plus** `"artifacts": {"spec":"<verbatim spec.md text>","acceptance":"<verbatim acceptance.md text>","diff":"<the change diff>"}` — the artifact text the harness-side citation-existence check searches: a refutation whose verbatim quote is not found in any held artifact is discarded by code before adjudication.
    Supply `now` yourself (the script cannot call Date). Then emit the launch line:
    `SDD_FLEET_WORKFLOW_LAUNCHED: {"runId":"<id>","transcriptDir":"<path>","status":"async_launched","feature":"<slug>","cycle":<N>,"workflow":"change-review"}`.
+
+   **Sync the story's Jira status — CHANGE_REVIEW (best-effort, deterministic).**
+   The change is now under review (the scribe writes the `PHASE: CHANGE_REVIEW`
+   flip on completion; this command initiated it). If `.sdd/<slug>/PROGRESS.md`
+   carries a `JIRA_KEY:`, run:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/jira-adapter.sh" phase-transition --key "<JIRA_KEY>" --phase CHANGE_REVIEW --now "<iso8601 now>"
+   ```
+   Emit `SDD_FLEET_JIRA_SYNC: {"key":"<KEY>","phase":"CHANGE_REVIEW","result":"<transitioned|noop|skipped|error>"}`
+   (`skipped` = no `JIRA_KEY` / adapter unconfigured). **Best-effort by design: a
+   Jira outage or refusal NEVER blocks the dispatch or any later step** — Jira is
+   the intent/status record plane, not a gate. Never retry-loop; the next phase
+   flip re-syncs. (On a `revise` verdict the story drops back to BUILD — the next
+   `/sdd-fleet:feature-dev` BUILD flip re-syncs it there; no sync here.)
 
 8c. **Act on the workflow verdict** (key off the returned envelope, not your own reading of the diff):
    - `clean` → CHANGE_REVIEW passed. Continue to step 9 (devops handoff).
@@ -132,8 +149,35 @@ skill. Consult it for the CHANGE_REVIEW phase, the CHANGE_CYCLE budget
      your run id) — report failure with `scribe_error`; never treat the verdict as applied
      or continue to step 9.
 
-9. **Hand off to devops.** Set `PHASE: HANDOFF` in PROGRESS.md. Use the Task
-   tool to launch `sdd-fleet:devops` with a prompt that:
+8d. **Record the green suite run (the gate's evidence).** Run this immediately
+   before the step-9 flip — after the LAST worktree write; any later source/tests
+   edit stales the records and the gates re-block:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/suite-record.sh" <slug> --now <iso8601>
+   ```
+   Branch on `SDD_FLEET_SUITE_RECORD:`: `green` → proceed to step 9; `red` → the
+   suite regressed since pre-flight — do NOT flip; surface the failing commands
+   (treat as a failed pre-flight); `skip` → no recognized test command — set
+   `SDD_FLEET_TEST_CMD` and re-run before flipping. If any edit landed after the
+   step-7 counterfactual record, re-run `counterfactual-record.sh` here too — the
+   flip requires BOTH records fresh.
+
+9. **Hand off to devops.** Set `PHASE: HANDOFF` in PROGRESS.md. This write is
+   **gated**: the counterfactual gate and the handoff suite gate (plus the
+   dependency and blast-radius gates) fire on it — a block means fix the stated
+   cause and re-run the step-7/8d record scripts, not an override.
+
+   **Sync the story's Jira status — HANDOFF (best-effort, deterministic).** If
+   PROGRESS.md carries a `JIRA_KEY:`, run:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/jira-adapter.sh" phase-transition --key "<JIRA_KEY>" --phase HANDOFF --now "<iso8601 now>"
+   ```
+   Emit `SDD_FLEET_JIRA_SYNC: {"key":"<KEY>","phase":"HANDOFF","result":"<transitioned|noop|skipped|error>"}`.
+   **Best-effort: a Jira outage NEVER blocks the handoff** — Jira is the
+   intent/status record plane, not a gate; the vault's `PHASE: HANDOFF` stands
+   regardless. Never retry-loop.
+
+   Then use the Task tool to launch `sdd-fleet:devops` with a prompt that:
    - Names the active feature.
    - Pointers to spec.md, acceptance.md, DECISIONS.md, IMPL_NOTES.md.
    - Asks for CI/CD updates, IaC if applicable, and release notes.
@@ -192,6 +236,20 @@ skill. Consult it for the CHANGE_REVIEW phase, the CHANGE_CYCLE budget
     backlog flip (step 11). A CHANGE_REVIEW bounce-back to BUILD (step 8) and a devops
     refusal/failure (step 9 branch) both STOP earlier and never reach here, so an
     unshipped feature is never advanced.
+
+    a0. **Sync the story's Jira status — DONE (best-effort, deterministic).** The
+       story is genuinely shipped (devops emitted `SDD_FLEET_DEVOPS_OK`; the
+       backlog is flipped). If PROGRESS.md carries a `JIRA_KEY:`, run:
+       ```bash
+       bash "${CLAUDE_PLUGIN_ROOT}/scripts/jira-adapter.sh" phase-transition --key "<JIRA_KEY>" --phase DONE --now "<iso8601 now>"
+       ```
+       Emit `SDD_FLEET_JIRA_SYNC: {"key":"<KEY>","phase":"DONE","result":"<transitioned|noop|skipped|error>"}`.
+       This DONE close-out is what **epic completion depends on**: the workspace
+       tier derives an epic's completion (and the conductor's/`next-story`'s
+       `done` counts) from the Jira story states, and a story that never reaches
+       DONE holds its epic open forever. **Still best-effort: a Jira outage NEVER
+       blocks the ship or the loop advance** — note the miss to the user (a
+       re-run of the sync, or a manual Jira transition, closes it) and continue.
 
     a. **Release the in-flight lock.** The shipped feature is no longer in flight —
        release via the shared script (it verifies the slug, removes `.sdd/ACTIVE.lock`,

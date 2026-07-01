@@ -1,5 +1,5 @@
 ---
-description: Drive the active per-repo item through its machine one phase at a time — forward REVIEW (review.js) -> FINALIZE gate -> BUILD (qa->coder or deep-build.js); bug REPRODUCE -> DIAGNOSE (diagnose.js) -> FIX -> VERIFY. Stops at any gate refusal or escalation. Ship with /sdd-fleet:pr-review.
+description: Drive the active per-repo item through its machine one phase at a time — forward REVIEW (review.js) -> FINALIZE gate -> BUILD (qa->coder or deep-build.js); bug REPRODUCE -> DIAGNOSE (diagnose.js) -> FIX -> VERIFY. Each forward phase flip it owns syncs the story's Jira status (best-effort, never blocking). Stops at any gate refusal or escalation. Ship with /sdd-fleet:pr-review.
 allowed-tools: Read, Edit, Bash, Task, Workflow
 ---
 
@@ -85,6 +85,7 @@ There is no non-workflow fallback for REVIEW. If the runtime is missing, refuse 
    - **Also pass `"prior_blockers": <n>` when `PROGRESS.md` carries a `SURVIVING_BLOCKERS:` field** (the count the previous review cycle recorded). It drives the workflow's count-must-fall regression guard: if the surviving-blocker count does not strictly fall versus that prior value, the workflow escalates **early** rather than burning the remaining budget. **Omit on cycle 1** (no `SURVIVING_BLOCKERS` field yet) so the guard is disabled for the first cycle.
    - **Also pass `"criteria": [<AC ids>]`** — the acceptance-criterion ids (e.g. `AC-1`, `AC-2`) parsed from `.sdd/<slug>/acceptance.md` (or the spec's `## Acceptance Criteria` if inline). This makes the workflow require a per-AC verdict (pass/fail/concern) from **every** reviewer — silence on a requirement is impossible; a reviewer that omits one makes the run `incomplete` and it re-runs. Omit/empty when the spec has no `AC-N` ids.
    - **Also pass `"semver": <json>` when this repo's change bumps a PUBLISHED contract** (cross-service impact). If `service.json` `produces` a contract already published in the registry and this change moves it to a new version, run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/semver-check.sh" <contract> --old <published-semver> --new <new-semver> --root <workspace-root>` and pass its JSON object verbatim. The workflow then raises a cross-service concern: a **major** bump reaching pinned consumers is a deterministic blocker; a **minor/patch** reaching pinned consumers triggers exactly **one** isolated "breaking beyond the bump?" model call inside the workflow (the single model call for cross-service impact). **Omit when** there is no contract change, no registry, or no pinned consumers — the concern is then inert.
+   - **Also pass `"artifacts": {"spec":"<verbatim spec.md text>","acceptance":"<verbatim acceptance.md text>"}`** — the artifact text the harness-side citation-existence check searches: a refutation whose verbatim `quote` is not found in any held artifact is discarded by code before adjudication (omit and the check is inert, quote presence still enforced).
 
    Supply `now` yourself (the script cannot call `Date`); the workflow refuses to run without it. The Workflow tool is async-launched: it returns immediately with a `runId`, `taskId`, and `transcriptDir`.
 
@@ -97,6 +98,12 @@ There is no non-workflow fallback for REVIEW. If the runtime is missing, refuse 
     Orchestrators consume this line to track the workflow's progress (poll via `TaskList`/`TaskGet` until completion).
 
 11. **Verify the run is alive (marker ownership).** The marker from step 7 is normally deleted by the workflow's scribe. After emitting the launch line, poll the launched run once (`TaskGet` on the returned task). If the run has already died (errored/cancelled) before any scribe ran, release `.sdd/<slug>/.workflow-in-flight` yourself — **only if its content still matches your run id**, by overwriting it with empty content — then report the failure instead of step 12's success message. Orchestrators polling later must apply the same rule: dead run + marker content matching this run id → release the marker.
+
+11b. **Sync the story's Jira status — REVIEW (best-effort, deterministic).** The run is live, so the story is now under review (the scribe writes the `PHASE: REVIEW` flip on completion; this command initiated it). If `.sdd/<slug>/PROGRESS.md` carries a `JIRA_KEY:`, run:
+    ```bash
+    bash "${CLAUDE_PLUGIN_ROOT}/scripts/jira-adapter.sh" phase-transition --key "<JIRA_KEY>" --phase REVIEW --now "<iso8601 now>"
+    ```
+    Emit `SDD_FLEET_JIRA_SYNC: {"key":"<KEY>","phase":"REVIEW","result":"<transitioned|noop|skipped|error>"}` (`skipped` = no `JIRA_KEY` / adapter unconfigured). **Best-effort by design: a Jira outage or refusal NEVER blocks the dispatch or any later step** — Jira is the intent/status record plane, not a gate. Never retry-loop; the next phase flip re-syncs.
 
 12. **Report and exit.** Tell the user:
     - The workflow is running in the background.
@@ -240,6 +247,18 @@ cycle.
      SDD_FLEET_FINALIZE_PASS: {"feature":"<slug>","cycle":<N>,"status":"FINALIZED","phase":"BUILD"}
      ```
 
+   - **Sync the story's Jira status — BUILD (best-effort, deterministic).** If
+     PROGRESS.md carries a `JIRA_KEY:`, run:
+     ```bash
+     bash "${CLAUDE_PLUGIN_ROOT}/scripts/jira-adapter.sh" phase-transition --key "<JIRA_KEY>" --phase BUILD --now "<iso8601 now>"
+     ```
+     Emit `SDD_FLEET_JIRA_SYNC: {"key":"<KEY>","phase":"BUILD","result":"<transitioned|noop|skipped|error>"}`
+     (`skipped` = no `JIRA_KEY` / adapter unconfigured). **Best-effort by design:
+     a Jira outage or refusal NEVER blocks the flip** — the vault flip above
+     already happened and stands; Jira is the intent/status record plane, not a
+     gate. Never retry-loop; the next phase flip re-syncs. (The trivial fast-path
+     lands here too — its jump from step 2 reaches this same pass output.)
+
    - Tell the user: the spec is finalized; the next command is
      **`/sdd-fleet:feature-dev`**, which drives the BUILD sequence (qa drafts the
      failing test suite first, then coder implements — or routes to the
@@ -247,7 +266,8 @@ cycle.
 
    Both edits are idempotent — flipping FINALIZED to FINALIZED is a no-op,
    and the step-2 already-finalized branch short-circuits before this point
-   anyway.
+   anyway. (The Jira sync is idempotent too — `phase-transition` no-ops when the
+   story already sits at the mapped status.)
 
 ## Hard rules
 
