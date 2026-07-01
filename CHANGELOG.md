@@ -14,6 +14,22 @@ migrated automatically. sdd-fleet assumes a single driver per working tree: one 
 session per worktree, with the `.sdd/ACTIVE` lock serializing acquisition within that worktree
 only (never across clones).
 
+## [1.2.1] — 2026-07-01
+
+**The design docs become a site** — the two monolithic HTML documents are split
+into an 8-page GitHub Pages site published from `docs/` (brief → boundary →
+architecture overview/workspace/feature-machine/memory → provenance → pilot),
+with a tone pass (presenting the vision, not selling it: calmer ledes, first-use
+glosses for residue / level-triggered reconciler / counterfactual / survival
+vote, governance vocabulary kept verbatim) and a diagram pass (self-contained
+SVG defs, mobile min-widths, transitive blast-radius hop, a new before/after
+control diagram and risk-control mapping table). The old paths
+`docs/sdd-fleet-design.html` / `docs/sdd-fleet-concept.html` redirect; pristine
+sources are kept unpublished as `docs/_src-*.html`. Docs-only plus one new test:
+`scripts/docs-drift.test.sh` fails the suite if the site's phase spine or the
+canonical boundary sentence drifts from `skills/sdd-protocol`. No runtime,
+schema, or signal-grammar change.
+
 ## [1.2.0] — 2026-07-01
 
 **Design-first alignment** — the design documents were ruled the source of truth

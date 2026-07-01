@@ -1,0 +1,101 @@
+---
+layout: default
+title: What a pilot would take
+description: "A deliberately small first run — scope, prerequisites, staffing, success criteria — and a candid list of what only the pilot can measure."
+prev:
+  url: /provenance.html
+  title: "Four ideas, one boundary"
+---
+<!-- 01 — the pilot -->
+<section id="pilot">
+  <div class="wrap">
+    {% include boundary-strip.html %}
+    <div class="sec-head" style="margin-top:26px">
+      <div class="sec-num">01</div>
+      <div>
+        <h2>What a pilot would take</h2>
+        <p class="sec-sub">A first run is deliberately small — scoped to produce one replayable audit trail end to end, so the property being evaluated is the trail, not the wall-clock.</p>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="panel">
+        <h4>Scope</h4>
+        <ul>
+          <li>1–2 member repos, one epic</li>
+          <li>one cross-repo contract in play, so blast-radius and the human gate actually fire</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Prerequisites</h4>
+        <ul>
+          <li>Claude Code + the sdd-fleet plugin</li>
+          <li>a workspace vault over the repos; a <span class="mono">service.json</span> descriptor per repo</li>
+          <li>contract-registry and Jira access</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>What the bank staffs</h4>
+        <ul>
+          <li>gate approvers for epic/contract ratification and money / PII sign-off</li>
+          <li>an escalation owner for non-converging reviews</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Success criteria</h4>
+        <ul>
+          <li>a replayable audit trail re-derived from <span class="mono">.sdd/</span></li>
+          <li>zero un-gated money / PII merges</li>
+          <li>every acceptance criterion traced to a test before code</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="pull">A pilot is one epic across one or two repos, run end to end. It succeeds or fails on the audit trail it leaves — not on how fast it ran.</div>
+  </div>
+</section>
+
+<!-- 02 — what the pilot has to measure -->
+<section id="operating" style="border-bottom:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">02</div>
+      <div>
+        <h2>Operating it — what we don't know yet</h2>
+        <p class="sec-sub">A candid list. These are the questions the pilot exists to answer — none of them has an honest number today, and we won't invent one.</p>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="panel">
+        <h4>Cost shape per change</h4>
+        <ul>
+          <li>the gates, the bounded review rounds, and the per-criterion checks cost wall-clock time and tokens</li>
+          <li>the shape of that cost — how much is fixed overhead per change, how much scales with the number of acceptance criteria — is to be measured in the pilot, per change and per epic</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Approver load</h4>
+        <ul>
+          <li>the human gates concentrate on a few people: epic and contract ratification, money-movement and PII sign-off, escalation resolution</li>
+          <li>how many gate events one epic actually generates — and whether they queue on a single approver — is a pilot measurement, not an estimate</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Failure modes</h4>
+        <ul>
+          <li>a bug in the harness itself <b>fails closed</b> — work blocks rather than slipping through; the pilot has to confirm that in practice and define the break-glass path</li>
+          <li>a model outage parks work safely at the last gated state</li>
+          <li>if an incident ships despite the gates, the replay trail is the investigation input — the gate set is then tuned, not trusted less</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Rollout alongside existing CI/CD</h4>
+        <ul>
+          <li>sdd-fleet's gates act in-session, before a merge; the bank's existing CI/CD stays authoritative after it</li>
+          <li>how the two overlap without double-gating or gaps is worked out on the pilot repos, not assumed in advance</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>

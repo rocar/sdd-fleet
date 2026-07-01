@@ -140,7 +140,9 @@ flowchart LR
 ```
 
 The full design rationale — including the end-to-end one-change walkthrough — lives
-in [`docs/sdd-fleet-design.html`](docs/sdd-fleet-design.html).
+in the design site under [`docs/`](docs/index.html) (published via GitHub Pages:
+brief → boundary → architecture → provenance → pilot; the old
+`docs/sdd-fleet-design.html` / `docs/sdd-fleet-concept.html` paths redirect).
 
 ---
 

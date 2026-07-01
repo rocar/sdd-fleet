@@ -1,3 +1,8 @@
+---
+layout: default
+title: "ADR-0002 — The design document is the source of truth"
+---
+
 # ADR-0002: The design document is the source of truth — ratified decisions and the alignment plan
 
 - **Date:** 2026-07-01

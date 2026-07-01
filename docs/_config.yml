@@ -1,0 +1,12 @@
+title: sdd-fleet
+description: >-
+  A deterministic harness over probabilistic generation — spec-driven,
+  multi-agent delivery for a regulated multi-repo estate, engineered for
+  audit and replay.
+exclude:
+  - smoke
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+plugins:
+  - jekyll-redirect-from

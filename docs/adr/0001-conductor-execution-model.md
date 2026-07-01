@@ -1,3 +1,8 @@
+---
+layout: default
+title: "ADR-0001 — The conductor is a stateless reconcile sweep"
+---
+
 # sdd-fleet Architecture Decisions
 
 Append-only log of **plugin-level** design decisions (distinct from the runtime

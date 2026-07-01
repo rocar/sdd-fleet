@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADR-0001 — The conductor is a stateless reconcile sweep · sdd-fleet</title>
+<meta name="description" content="A deterministic harness over probabilistic generation — spec-driven, multi-agent delivery for a regulated multi-repo estate, engineered for audit and replay.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+
+<nav class="topnav" aria-label="Site">
+  <div class="wrap topnav-inner">
+    <a class="brand" href="/"><span class="dot"></span>sdd-fleet</a>
+    <ul class="nav-links">
+      <li><a href="/">Brief</a></li>
+      <li><a href="/boundary.html">Boundary</a></li>
+      <li class="nav-drop">
+        <a href="/architecture/">Architecture</a>
+        <ul class="drop-menu">
+          <li><a href="/architecture/">Overview</a></li>
+          <li><a href="/architecture/workspace.html">Workspace</a></li>
+          <li><a href="/architecture/feature-machine.html">Feature machine</a></li>
+          <li><a href="/architecture/memory.html">Memory</a></li>
+        </ul>
+      </li>
+      <li><a href="/provenance.html">Provenance</a></li>
+      <li><a href="/pilot.html">Pilot</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+<h1 id="sdd-fleet-architecture-decisions">sdd-fleet Architecture Decisions</h1>
+
+<p>Append-only log of <strong>plugin-level</strong> design decisions (distinct from the runtime
+<code class="language-plaintext highlighter-rouge">.sdd/DECISIONS.md</code> records the fleet writes inside member repos). Each ADR is
+immutable; supersede with a new ADR rather than editing an old one.</p>
+
+<hr />
+
+<h2 id="adr-0001-the-conductor-is-a-stateless-reconcile-sweep--not-a-daemon-not-per-session">ADR-0001: The conductor is a stateless reconcile sweep — not a daemon, not per-session</h2>
+
+<ul>
+  <li><strong>Date:</strong> 2026-07-01</li>
+  <li><strong>Status:</strong> accepted</li>
+</ul>
+
+<h3 id="context">Context</h3>
+
+<p>The workspace-layer <strong>conductor</strong> is the piece that advances an epic’s stories
+across repos as their dependencies become satisfiable. Its shape is fixed by a
+hard rule (<code class="language-plaintext highlighter-rouge">CLAUDE.md</code>): <em>the conductor stays modelless and command-less</em> — the
+widest-blast-radius layer is the one where a model in the loop is most dangerous,
+so it is deliberately not an agent and not a slash command.</p>
+
+<p>That framing keeps generating the same three questions, because the name
+“conductor / reconciler” implies more than it is:</p>
+
+<ol>
+  <li><strong>Does it run autonomously if the per-repo machine has human gates?</strong></li>
+  <li><strong>How is it actually executed — is there a daemon running somewhere?</strong></li>
+  <li><strong>If N developers each run Claude Code interactively, does each get a conductor?</strong></li>
+</ol>
+
+<p>This ADR records the answers as one coherent execution &amp; deployment model, so it
+is not re-litigated. The authority for the mechanics remains
+<code class="language-plaintext highlighter-rouge">skills/sdd-protocol/references/workspace-tier.md</code> and the scripts themselves;
+this ADR is the <em>why</em> and the operational picture.</p>
+
+<h3 id="decision">Decision</h3>
+
+<p><strong>The conductor is a stateless, idempotent reconcile <em>sweep</em>, invoked one tick at
+a time — not a long-running service and not something any developer hosts.</strong></p>
+
+<ul>
+  <li><strong>One tick</strong> (<code class="language-plaintext highlighter-rouge">scripts/conductor-tick.sh &lt;epic&gt; --now &lt;ts&gt;</code>) reads the live Jira
+story set + the contract registry <strong>fresh</strong>, computes the ready frontier as pure
+set logic (<code class="language-plaintext highlighter-rouge">scripts/ready-frontier.sh</code> — a story is ready iff it is
+<code class="language-plaintext highlighter-rouge">NOT_STARTED</code> and every contract it <code class="language-plaintext highlighter-rouge">consumes</code> is published), advances each ready
+story <code class="language-plaintext highlighter-rouge">NOT_STARTED → DISPATCHED</code> via the Jira adapter, emits one
+<code class="language-plaintext highlighter-rouge">SDD_FLEET_DISPATCH</code> signal per dispatch, and <strong>exits</strong>. It follows the
+<code class="language-plaintext highlighter-rouge">resolve → signal → never-invoke</code> pattern: it never starts the per-repo machine,
+never creates a story, never reads <code class="language-plaintext highlighter-rouge">plan.md</code>/<code class="language-plaintext highlighter-rouge">contracts.md</code>.</li>
+  <li><strong>One sweep</strong> (<code class="language-plaintext highlighter-rouge">scripts/conductor-loop.sh --now &lt;ts&gt;</code>) fires a tick per epic
+(the epics <em>are</em> the <code class="language-plaintext highlighter-rouge">.sdd/_epic/*/</code> dirs — ground truth, no index to drift), and
+also exits. <strong>There is no daemon.</strong> “Looping” is an <em>external</em> scheduler
+(cron / CI / <code class="language-plaintext highlighter-rouge">watch</code>) re-invoking the sweep, injecting a fresh <code class="language-plaintext highlighter-rouge">--now</code> each time.
+It reads no clock and keeps no state between runs.</li>
+  <li><strong>It is workspace infrastructure, not per-developer.</strong> Being command-less, it
+cannot live inside a model session. Developers do not each host one; they
+<em>consume</em> its output (dispatched stories).</li>
+  <li><strong>Concurrency is safe by construction, not by a mutex.</strong> Dispatch-once does
+<strong>not</strong> depend on the lease: the frontier is <code class="language-plaintext highlighter-rouge">NOT_STARTED</code>-only and the Jira
+transition is idempotent, so any number of concurrent ticks on the same epic
+compute the same frontier from the same shared ground truth (Jira + registry)
+and cannot double-dispatch. The per-epic lease
+(<code class="language-plaintext highlighter-rouge">_epic/&lt;slug&gt;/.conductor.lock</code>, atomic no-clobber, no auto-expiry) only makes
+redundant sweeps <em>defer</em> to each other — coordination, never correctness.</li>
+  <li><strong>Human gates never block dispatch.</strong> The one human “go” is collapsed up front
+into <code class="language-plaintext highlighter-rouge">epic-ratify</code> (a hard human gate; the conductor never dispatches an
+unratified epic, and the <code class="language-plaintext highlighter-rouge">epic-ratified-before-fanout</code> hook is the backstop).
+The remaining human gates (HANDOFF, money/PII / blast-radius, escalation) sit at
+the <em>end</em> of each story and block merge, not dispatch. Because the sweep is
+level-triggered and re-reads everything each tick, a human clearing a HANDOFF
+(which publishes a contract to the registry) is simply new world state that the
+<em>next</em> tick observes — releasing whatever was waiting on it. The conductor never
+waits on a human.</li>
+</ul>
+
+<p>Two operating modes fall out of the same <code class="language-plaintext highlighter-rouge">ready-frontier.sh</code> core:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Mode</th>
+      <th>Who runs the sweep</th>
+      <th>When to use</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Interactive / pull</strong></td>
+      <td>on-demand (a person, or <code class="language-plaintext highlighter-rouge">/sdd-fleet:status</code>)</td>
+      <td>dev-driven teams; the realistic default today</td>
+    </tr>
+    <tr>
+      <td><strong>Autonomous / cron</strong></td>
+      <td>one scheduler on shared infra</td>
+      <td>hands-off, at-scale, continuous release</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="alternatives-considered">Alternatives considered</h3>
+
+<ul>
+  <li><strong>A long-running conductor daemon.</strong> Rejected: a daemon holds process state and a
+clock, which breaks replay (<code class="language-plaintext highlighter-rouge">--now</code> injection) and reintroduces “recollection” the
+design specifically forbids. A stateless sweep re-derived from ground truth each
+tick is strictly safer and testable.</li>
+  <li><strong>A conductor as a slash command / in-session.</strong> Rejected by the standing hard
+rule: a slash command runs in a model session and invites the model to editorialize
+dispatch across the whole estate — the one layer whose value is having no model.
+(A <em>deterministic-resolver-only</em> command like the product-tier <code class="language-plaintext highlighter-rouge">next-feature</code> is
+the sanctioned exception, and an epic-tier <code class="language-plaintext highlighter-rouge">next-story</code> could follow that precedent
+— but it would be sugar over this same core, not a different conductor.)</li>
+  <li><strong>A model-driven orchestrator</strong> that decides ordering/importance. Rejected: ordering
+is pure set logic over published contracts; a model there is non-determinism with
+no upside.</li>
+  <li><strong>A conductor per developer / per session.</strong> Rejected as a category error: it is
+estate infrastructure. Even if it happened, idempotency makes it harmless, but the
+intended topology is one shared frontier feeding many single-story worktrees.</li>
+</ul>
+
+<h3 id="consequences">Consequences</h3>
+
+<p><strong>Easier / load-bearing guarantees</strong></p>
+<ul>
+  <li><strong>Safe concurrency with no locking discipline.</strong> N sweeps converge; the shared
+mutable state is <em>only</em> Jira status + the registry. Everything else is re-derived.</li>
+  <li><strong>Replayable and testable.</strong> No clock, no randomness, no creation — gated by
+<code class="language-plaintext highlighter-rouge">conductor-modelless-lint.test.sh</code> and <code class="language-plaintext highlighter-rouge">ready-frontier.test.sh</code>.</li>
+  <li><strong>Autonomy that never bypasses a gate.</strong> “Autonomous between gates” — like a CI/CD
+pipeline with manual-approval stages. The conductor approves nothing.</li>
+</ul>
+
+<p><strong>Topology this commits us to</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  ESTATE PLANE  (shared, not per-dev)            REPO / WORKTREE PLANE  (per-dev, partitioned by repo)
+  ───────────────────────────────────           ───────────────────────────────────────────────────
+  conductor sweep (cron/CI or on-demand)         Dev A ─ claude -i ─ jira-story S1 → feature-dev → pr-review  (authoriser/, ACTIVE)
+  · modelless bash, one tick per epic            Dev B ─ claude -i ─ jira-story S2 → feature-dev → pr-review  (checkout/,  ACTIVE)
+  · resolve frontier → signal → never-invoke
+              └──────────────  JIRA status  +  contract REGISTRY  (the ONLY shared mutable state)  ──────────────┘
+</code></pre></div></div>
+<ul>
+  <li><strong>Parallelism is across repos, not within one.</strong> Single-worktree + the per-repo
+<code class="language-plaintext highlighter-rouge">.sdd/ACTIVE</code> lock serialize work inside a repo; different stories live in different
+repos. Cross-developer coordination is Jira status (kept current by every phase
+syncing to Jira), with the PR/merge as the hard serialization.</li>
+</ul>
+
+<p><strong>Harder / honest limits</strong></p>
+<ul>
+  <li><strong>The autonomous last mile is unwired.</strong> The sweep <em>signals</em> dispatch; something
+still has to <em>start</em> <code class="language-plaintext highlighter-rouge">jira-story &lt;id&gt;</code> headless on each <code class="language-plaintext highlighter-rouge">SDD_FLEET_DISPATCH</code>.
+<code class="language-plaintext highlighter-rouge">workspace-tier.md</code> notes the cross-level dispatch token “is not planted yet …
+deferred.” So today the honest operating mode is <strong>pull</strong>: run a sweep / <code class="language-plaintext highlighter-rouge">status</code>
+to get the frontier, developers start ready stories interactively.</li>
+  <li><strong>Interactive teams typically don’t run the loop at all</strong> — which is fine, and is
+why an epic-tier <code class="language-plaintext highlighter-rouge">next-story</code> convenience (mirroring <code class="language-plaintext highlighter-rouge">next-feature</code>) is a
+reasonable future addition over this core, explicitly <em>not</em> a second conductor.</li>
+</ul>
+
+<h3 id="references">References</h3>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">scripts/conductor-tick.sh</code>, <code class="language-plaintext highlighter-rouge">scripts/conductor-loop.sh</code>, <code class="language-plaintext highlighter-rouge">scripts/ready-frontier.sh</code></li>
+  <li><code class="language-plaintext highlighter-rouge">hooks/scripts/epic-ratified-before-fanout.sh</code></li>
+  <li><code class="language-plaintext highlighter-rouge">skills/sdd-protocol/references/workspace-tier.md</code> (§ “The conductor — modelless, creation-free estate dispatch”)</li>
+  <li><code class="language-plaintext highlighter-rouge">commands/next-feature.md</code> (the product-tier deterministic-resolver precedent)</li>
+</ul>
+
+</main>
+
+
+
+<footer>
+  <div class="wrap">
+    <div>sdd-fleet — a Claude Code plugin · engineered for audit and replay</div>
+    <div>Deterministic harness · probabilistic generation · human accountability</div>
+  </div>
+</footer>
+
+</body>
+</html>

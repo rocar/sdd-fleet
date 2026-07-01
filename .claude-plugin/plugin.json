@@ -1,6 +1,6 @@
 {
   "name": "sdd-fleet",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Spec-driven multi-agent software house for multi-repo estates: architect, coder, qa, devops, scribe, and classifier subagents executing a hook-gated SPEC → REVIEW → FINALIZE → BUILD → CHANGE_REVIEW → HANDOFF state machine, with a human-ratified product planning tier and a reproducing-test-gated bug lane. A Layer-3 workspace tier plans epics and contract designs across submodules and dispatches them via a modelless conductor; cross-repo contract governance adds service descriptors, an append-only contract registry, a derived service catalog, and deterministic semver + blast-radius gates that force a human gate on risky changes. Deterministic gates, bounded review cycles, first-class human escalation, configurable per-item review rosters and cycle budgets, a governed generate-then-pin lane for authoring novel workflows, and headless orchestrator support. The Layer-2 oracle is enforced in code, not command prose: finalize, write-lock, traceability, counterfactual, and suite gates; a neutral-adjudicator survival vote with a per-criterion detection floor, harness-verified citation quotes, and a dedicated security/money/PII pass; CHANGE_REVIEW runs the same deterministic engine (architect + qa) on the diff; and the workspace tier adds a next-story pull entry, Jira story-ID intake, and per-phase status sync.",
   "author": {
     "name": "Ray Car",

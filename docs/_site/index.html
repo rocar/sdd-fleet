@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sdd-fleet — the brief · sdd-fleet</title>
+<meta name="description" content="The 30-second read: a deterministic harness over probabilistic generation, for a regulated multi-repo estate — what it is, what it produces, where humans stay in control.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+
+<nav class="topnav" aria-label="Site">
+  <div class="wrap topnav-inner">
+    <a class="brand" href="/"><span class="dot"></span>sdd-fleet</a>
+    <ul class="nav-links">
+      <li><a href="/" class="active">Brief</a></li>
+      <li><a href="/boundary.html">Boundary</a></li>
+      <li class="nav-drop">
+        <a href="/architecture/">Architecture</a>
+        <ul class="drop-menu">
+          <li><a href="/architecture/">Overview</a></li>
+          <li><a href="/architecture/workspace.html">Workspace</a></li>
+          <li><a href="/architecture/feature-machine.html">Feature machine</a></li>
+          <li><a href="/architecture/memory.html">Memory</a></li>
+        </ul>
+      </li>
+      <li><a href="/provenance.html">Provenance</a></li>
+      <li><a href="/pilot.html">Pilot</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="grid-bg"></div>
+  <div class="wrap hero-inner">
+    <p class="eyebrow"><span class="dot"></span> sdd-fleet · a Claude Code plugin · a vision for regulated multi-repo delivery</p>
+    <h1>Deterministic harness.<br><span class="b2">Probabilistic generation.</span></h1>
+    <p class="lede">sdd-fleet is a spec-driven, multi-agent development system for a regulated, multi-repo estate. Deterministic code — the harness — owns every consequence: which review concerns block a merge, when a gate opens, when work escalates to a person. The model judges only the residue — the judgment calls no rule can settle. A human signs off wherever the blast radius is high. The system is designed for audit and replay rather than for speed.</p>
+    <div class="auth-key">
+      <div class="k">
+        <div class="top"><span class="tag tag-code">Harness</span></div>
+        <h4>Deterministic &amp; fail-closed</h4>
+        <p>Gates, counting, routing, the loop. Reproducible, and not bypassable by an agent.</p>
+      </div>
+      <div class="k">
+        <div class="top"><span class="tag tag-model">Model</span></div>
+        <h4>Probabilistic judgement</h4>
+        <p>Drafting, review, the one contested call. Isolated to a single logged role.</p>
+      </div>
+      <div class="k">
+        <div class="top"><span class="tag tag-human">Human</span></div>
+        <h4>Accountability</h4>
+        <p>Ratification before work spreads to the repos; sign-off on money movement and PII. Accountability the machine cannot supply.</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ THE BRIEF · exec on-ramp ============ -->
+<section id="brief">
+  <div class="wrap">
+    <p class="brief-kicker">At a glance — the 30-second read</p>
+    <h2 style="margin:0 0 8px">If you read nothing else</h2>
+    <p class="sec-sub">For an engineering leader evaluating Claude&nbsp;Code as a way to build from a spec, with auditable output, across a regulated multi-repo estate. This section is the summary; the <a href="architecture/">architecture pages</a> carry the evidence.</p>
+
+    <div class="brief-panel">
+      <div class="bp">
+        <div class="k">What it is</div>
+        <p>A spec-driven, multi-agent build system where <b>the harness — deterministic code, not the AI model — owns every consequence</b>: which review concerns block a merge, when a gate opens, when work escalates to a human.</p>
+      </div>
+      <div class="bp">
+        <div class="k">What it produces</div>
+        <p>Per change, a <b>gated, replayable audit trail</b>: every acceptance criterion mapped to a test before code, every contract version-checked, every decision reconstructable from the record.</p>
+      </div>
+      <div class="bp human">
+        <div class="k">Where humans stay in control</div>
+        <p><b>Contract &amp; epic ratification</b> before any work spreads to the repos, <b>money-movement / PII sign-off</b>, and <b>escalation</b> when review won't converge — enforced by the harness, not by convention.</p>
+      </div>
+      <div class="bp model">
+        <div class="k">The tradeoff</div>
+        <p>Optimised for <b>audit and correctness, not raw speed</b>. Decisive review is front-loaded onto the contract shape up front, rather than spent per-PR after the fact.</p>
+      </div>
+    </div>
+
+    <div class="replay">
+      <div class="rl">▣ What audit reads back</div>
+      <p>From artifacts that were <b style="color:#7fd1c4">gated, not asserted</b>, the record supports one sentence per change: <span class="q">“checkout's step-up change was built against catalog snapshot vX, authorise@3.3.0, additive per ADR-217, human sign-off by&nbsp;Y, contract tests green on a write-locked suite.”</span> The rest of this site explains how the harness guarantees that sentence — start with <a href="boundary.html" style="color:#7fd1c4">the one rule</a>.</p>
+    </div>
+
+    <div class="note"><b>What “replay” means here.</b> Replay is re-deriving the decision trail from the record — which gates ran, what inputs they saw, how the vote counted, who signed — out of <span class="mono">.sdd/</span>, the pinned-SHA workspace commit, the registry, and Jira. It is <b>not</b> regenerating identical code: generation is probabilistic, and a re-run may produce a different diff. What is identical on a re-run is every consequence — the gates, the counting, the routing.</div>
+  </div>
+</section>
+
+<div class="wrap"><aside class="boundary-strip">
+  <p>
+    <span class="bs-sentence">Every consequence lives in code; the model judges only the irreducible residue; a human owns the blast radius.</span>
+    <span class="bs-tags">
+      <span class="tag tag-code">Harness</span>
+      <span class="tag tag-model">Model</span>
+      <span class="tag tag-human">Human</span>
+    </span>
+    <a class="bs-link" href="/boundary.html">the one rule →</a>
+  </p>
+</aside>
+</div>
+
+<!-- ============ 01 WHAT A REGULATED ESTATE GETS ============ -->
+<section id="estate">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">01</div>
+      <div>
+        <h2>What a regulated estate gets</h2>
+        <p class="sec-sub">The boundary shows up as four concrete properties. Each one is checkable — by an auditor, a risk officer, or an engineering lead — against the record, not against anyone's account of it.</p>
+      </div>
+    </div>
+
+    <div class="pillars">
+      <div class="pill p1"><div class="k">Replay</div><h4>Re-derive, don't recollect</h4><p>Every run reconstructs from the vault record — an auditor re-derives the decision instead of trusting anyone's memory of it.</p></div>
+      <div class="pill p3"><div class="k">Hard gates</div><h4>Sign-off forced by computation</h4><p>A change touching money-movement or PII data, or reaching N downstream consumers, forces a human gate — by code, not by a reviewer remembering to.</p></div>
+      <div class="pill p2"><div class="k">Multi-repo</div><h4>Contracts hold the estate together</h4><p>Published contracts are versioned and append-only; pinned consumers are stopped automatically on a breaking bump.</p></div>
+      <div class="pill p4"><div class="k">Precision</div><h4>Auditable and replayable</h4><p>Every acceptance criterion maps to a test before code; QA reads captured coverage output where tooling exists — never its own opinion of it.</p></div>
+    </div>
+
+    <div class="note" style="border-left-color:var(--human)"><b>Where humans stay in the loop.</b> Four points require a human signature — enforced by the harness, not left to convention:</div>
+    <div class="flow" style="margin-top:12px">
+      <span class="st hgate">epic + contract ratify ◆</span><span class="arr">·</span>
+      <span class="st hgate">money / PII sign-off ◆</span><span class="arr">·</span>
+      <span class="st hgate">blast-radius threshold ◆</span><span class="arr">·</span>
+      <span class="st hgate">escalation on non-convergence ◆</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 WORKED EXAMPLE ============ -->
+<section id="trace">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">02</div>
+      <div>
+        <h2>One change, end to end</h2>
+        <p class="sec-sub">One unit of work — Jira <span class="mono">PAY-1843</span>, "add an instant-payout endpoint" — traced through the <a href="architecture/feature-machine.html">per-repo machine</a>. Every gate below is enforced by code; none depends on a reviewer remembering to check.</p>
+      </div>
+    </div>
+
+    <ol class="trace">
+      <li><b>SPEC</b> — the spec and acceptance criteria are authored into the vault <span class="mono">.sdd/PAY-1843/</span>. A <b>testability floor</b> refuses any criterion that isn't decidable — no "works correctly", no TBD.</li>
+      <li><b>REVIEW</b> — three role lenses fan out and an adversarial pass flags a <b>money-movement</b> concern on the payout path. It survives the <b>survival vote</b> — a concern stands unless refuted with evidence, and the counting is code — so it becomes a blocker the loop must resolve.</li>
+      <li><b>FINALIZE ▣</b> — a fail-closed gate refuses to freeze the spec while review blockers stand. <span class="mono">SDD_FLEET_FINALIZE_REFUSE: {"code":2,"reasons":["open-blockers"]}</span> → resolved, then <span class="mono">SDD_FLEET_FINALIZE_PASS</span>. No source can be written before this flip.</li>
+      <li><b>BUILD</b> — tests first: every criterion is mapped to a failing test (a fail-closed gate refuses source until the mapping is complete), then the test paths are <b>write-locked</b> so the oracle can't be edited to pass; code is generated to turn the locked suite green.</li>
+      <li><b>CHANGE_REVIEW</b> — blast radius is computed from the derived service catalog: this endpoint's contract has <b>4 pinned consumers</b>, and the data carries <span class="mono">money_movement</span>.</li>
+      <li><b>HANDOFF ◆</b> — either condition alone forces a human gate, regardless of the machine verdict. The fail-closed gate <b>blocks</b> the handoff until a human signs off, and the approval is pinned to the computed blast-radius signature — it goes stale if the radius widens. <span class="mono">SDD_FLEET_HANDOFF_APPROVE_PASS: {"feature":"PAY-1843","signature":"…"}</span></li>
+    </ol>
+    <figcaption style="margin-top:14px;font-size:.9rem;color:var(--ink-soft)">The model drafted and reviewed; <b>code</b> counted the vote, computed the blast radius, and held every gate; a <b>human</b> signed the money-movement release. The full trail is replayable from <span class="mono">.sdd/</span>. The machinery behind each gate is the <a href="architecture/">architecture section</a>.</figcaption>
+  </div>
+</section>
+
+<!-- ============ 03 READING PATHS ============ -->
+<section id="readpaths" style="border-bottom:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">03</div>
+      <div>
+        <h2>Where to go from here</h2>
+        <p class="sec-sub">The site is one linear argument, but three shorter paths through it fit three readers.</p>
+      </div>
+    </div>
+
+    <div class="readpath">
+      <div class="rp">
+        <div class="k">Executives · ~15 min</div>
+        <p>This page → <a href="boundary.html">One rule, three owners</a> → <a href="pilot.html">What a pilot would take</a>.</p>
+      </div>
+      <div class="rp">
+        <div class="k">Engineering leads</div>
+        <p>The executive path, plus <a href="architecture/">the control stack</a> — three layers over four record planes, and one change traced end to end.</p>
+      </div>
+      <div class="rp">
+        <div class="k">Implementers &amp; architects</div>
+        <p>The <a href="architecture/workspace.html">architecture sub-pages</a> (workspace · <a href="architecture/feature-machine.html">feature machine</a> · <a href="architecture/memory.html">memory</a>) and <a href="provenance.html">Four ideas, one boundary</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+
+<nav class="wrap pager" aria-label="Page sequence">
+  
+  
+  <a class="pg-next" href="/boundary.html"><span class="pg-lab">Next →</span>One rule, three owners</a>
+  
+</nav>
+
+
+<footer>
+  <div class="wrap">
+    <div>sdd-fleet — a Claude Code plugin · engineered for audit and replay</div>
+    <div>Deterministic harness · probabilistic generation · human accountability</div>
+  </div>
+</footer>
+
+</body>
+</html>

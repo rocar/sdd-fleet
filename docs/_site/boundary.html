@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One rule, three owners · sdd-fleet</title>
+<meta name="description" content="Every consequence lives in code; the model judges only the irreducible residue; a human owns the blast radius — the one rule the whole system is built around.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+
+<nav class="topnav" aria-label="Site">
+  <div class="wrap topnav-inner">
+    <a class="brand" href="/"><span class="dot"></span>sdd-fleet</a>
+    <ul class="nav-links">
+      <li><a href="/">Brief</a></li>
+      <li><a href="/boundary.html" class="active">Boundary</a></li>
+      <li class="nav-drop">
+        <a href="/architecture/">Architecture</a>
+        <ul class="drop-menu">
+          <li><a href="/architecture/">Overview</a></li>
+          <li><a href="/architecture/workspace.html">Workspace</a></li>
+          <li><a href="/architecture/feature-machine.html">Feature machine</a></li>
+          <li><a href="/architecture/memory.html">Memory</a></li>
+        </ul>
+      </li>
+      <li><a href="/provenance.html">Provenance</a></li>
+      <li><a href="/pilot.html">Pilot</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+<!-- ============ 01 THE BOUNDARY ============ -->
+<section id="boundary">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">01</div>
+      <div>
+        <h2>The boundary — <em>where code decides, where the model judges, where a human signs off</em></h2>
+        <p class="sec-sub">One line governs the whole system: <b>every consequence lives in code; the model judges only the irreducible residue; a human owns the blast radius.</b> Each layer is given exactly the authority it can be trusted with — and no more.</p>
+      </div>
+    </div>
+
+    <div class="three">
+      <div class="panel code">
+        <h4><span class="tag tag-code">Harness</span> owns every consequence</h4>
+        <ul>
+          <li>phase gates, the bounded review loop, survival-vote counting (a concern stands unless refuted with evidence, and the counting is code)</li>
+          <li>semver + blast-radius computation, cross-repo dispatch</li>
+          <li><b>reproducible and fail-closed</b> — identical on a re-run, and if anything is missing or unverifiable the gate <b>blocks rather than allows</b></li>
+        </ul>
+      </div>
+      <div class="panel model">
+        <h4><span class="tag tag-model">Model</span> judges only the residue</h4>
+        <ul>
+          <li>the <b>irreducible residue</b> — the narrow, genuinely subjective calls no rule can settle</li>
+          <li>drafting a spec, per-criterion review, the single contested "is this diff breaking?" call</li>
+          <li>it never decides a consequence, and it never curates memory</li>
+        </ul>
+      </div>
+      <div class="panel human">
+        <h4><span class="tag tag-human">Human</span> owns the blast radius</h4>
+        <ul>
+          <li>the <b>blast radius</b> — how many dependent services a change reaches, and whether it touches money movement or PII</li>
+          <li>epic &amp; contract ratification before fan-out; money / PII sign-off; escalation resolution</li>
+          <li>a human signature wherever the risk is too high to automate</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="pull">A gate written as instructions to the model is a consequence handed to the model. So every consequence lives in a <b>hook or a workflow</b> — plain code, identical on a re-run.</div>
+  </div>
+</section>
+
+<!-- ============ 02 WHY THE SCAFFOLDING EXISTS ============ -->
+<section id="principle">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">02</div>
+      <div class="sec-title-wrap">
+        <h2>Why the scaffolding exists</h2>
+        <p class="sec-sub">An AI agent generates <em>plausible</em> code non-deterministically — re-run the same prompt, get a different answer — and left unbounded, it also decides its own consequences: whether a concern matters, whether to merge. When a wrong call can move money or leak PII, “it usually gets it right” is not a control, and nothing about the run is reproducible or auditable. The response is not a better model. It is a deterministic harness over probabilistic generation — a control layer of plain code the model works inside.</p>
+      </div>
+    </div>
+    <p class="body">Every input that could vary run-to-run — what a reviewer flags, how code is written — is the model's. Every <em class="em">consequence</em> drawn from those outputs — does a concern survive, does a gate open, does this escalate — is the <b>harness</b>: pure code, identical on a re-run. The model judges; the harness decides what happens next. The <em>residue</em> left to the model is the narrow set of subjective calls no rule can settle — a draft, a review judgement, one contested decision. That single boundary is what makes the system auditable, and it is drawn — by colour — on every diagram across this site.</p>
+  </div>
+</section>
+
+<!-- ============ 03 THE DECISION LEDGER ============ -->
+<section id="ledger">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">03</div>
+      <div class="sec-title-wrap">
+        <h2>The decision ledger</h2>
+        <p class="sec-sub">Every decision in the system falls into one of three columns. The division itself is what an auditor examines.</p>
+      </div>
+    </div>
+
+    <div class="ledger">
+      <div class="led c">
+        <h3><span class="tag tag-code">Harness</span> owns the consequence</h3>
+        <ul>
+          <li>Phase gates &amp; the bounded loop</li>
+          <li>Survival-vote counting &amp; routing</li>
+          <li>Semver &amp; pinned-consumer checks</li>
+          <li>Blast-radius computation</li>
+          <li>Workspace dispatch &amp; reconciliation</li>
+        </ul>
+      </div>
+      <div class="led m">
+        <h3><span class="tag tag-model">Model</span> judges the residue</h3>
+        <ul>
+          <li>Drafting the plan, spec, tests, code</li>
+          <li>Per-criterion review &amp; the adversarial pass</li>
+          <li>One soundness verdict per contested refutation</li>
+          <li>“Is this diff semantically breaking?”</li>
+          <li>Optional semantic index (regenerable)</li>
+        </ul>
+      </div>
+      <div class="led h">
+        <h3><span class="tag tag-human">Human</span> owns the blast radius</h3>
+        <ul>
+          <li>Epic ratification, before work spreads to the repos</li>
+          <li>Contract-design sign-off</li>
+          <li>Money-movement &amp; PII gates</li>
+          <li>Escalation resolution</li>
+          <li>Promoting a lesson into the record</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="replay">
+      <div class="rl">▣ The audit line</div>
+      <p>From artifacts that were <b style="color:#7fd1c4">gated, not asserted</b> — each repo's <span class="q">.sdd/</span> history, the pinned-SHA workspace commit, the registry's version history, Jira's sign-offs — the trail re-derives one sentence: <span class="q">“checkout's step-up change was built against catalog snapshot vX, authorise@3.3.0, additive per ADR-217, human sign-off by Y, contract tests green on a write-locked suite.”</span></p>
+    </div>
+
+    <div class="note">Replay here means re-deriving that decision trail from the record, not regenerating identical code — defined in full on <a href="index.html#brief">the brief</a>.</div>
+  </div>
+</section>
+
+<!-- ============ 04 WHAT ACTUALLY CHANGES ============ -->
+<section id="before-after" style="border-bottom:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">04</div>
+      <div class="sec-title-wrap">
+        <h2>What actually changes</h2>
+        <p class="sec-sub">The same change, under two control models. The difference is not the model or the tooling; it is who holds the decision at each step.</p>
+      </div>
+    </div>
+
+    <figure>
+      <div class="fd-wrap">
+        <svg class="fd" viewBox="0 0 900 260" role="img" aria-label="Two panels compared. Left, AI-assisted development today: the model proposes a change and effectively decides it; human review is advisory, nothing fails closed, and the change merges. Right, sdd-fleet: the model proposes, the deterministic harness decides — fail-closed gates — and the change merges; on the branch where the computed blast radius is high — consumer count, money movement, PII — the path detours through a forced human signature before the merge.">
+          <defs>
+            <marker id="ba-ah" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#4C515C"/></marker>
+            <marker id="ba-ah-h" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#B45309"/></marker>
+          </defs>
+
+          <!-- left panel — AI-assisted today -->
+          <rect x="16" y="16" width="420" height="228" rx="10" fill="#E7E9ED" stroke="#AEB6C0" stroke-width="1.3"/>
+          <text class="ttl" x="36" y="42">AI-ASSISTED TODAY</text>
+          <rect class="n-model" x="36" y="64" width="120" height="48" rx="7"/>
+          <text class="nts" x="96" y="86" text-anchor="middle">model proposes</text>
+          <text class="sub" x="96" y="100" text-anchor="middle">drafts the change</text>
+          <path class="edge" style="marker-end:url(#ba-ah)" d="M156,88 H178"/>
+          <rect class="n-model" x="180" y="64" width="140" height="48" rx="7"/>
+          <text class="nts" x="250" y="86" text-anchor="middle">…and decides</text>
+          <text class="sub" x="250" y="100" text-anchor="middle">review is advisory</text>
+          <path class="edge" style="marker-end:url(#ba-ah)" d="M320,88 H342"/>
+          <rect class="n-plain" x="344" y="64" width="76" height="48" rx="7"/>
+          <text class="nts" x="382" y="91" text-anchor="middle">merge</text>
+          <text class="sub" x="36" y="204" text-anchor="start">the model is both author and judge</text>
+          <text class="sub" x="36" y="224" text-anchor="start">nothing fails closed</text>
+
+          <!-- right panel — sdd-fleet -->
+          <rect x="464" y="16" width="420" height="228" rx="10" fill="#F4F6F8" stroke="#0E7490" stroke-width="1.3"/>
+          <text class="ttl" x="484" y="42">SDD-FLEET</text>
+          <rect class="n-model" x="484" y="64" width="112" height="48" rx="7"/>
+          <text class="nts" x="540" y="86" text-anchor="middle">model proposes</text>
+          <text class="sub" x="540" y="100" text-anchor="middle">drafts only</text>
+          <path class="edge" style="marker-end:url(#ba-ah)" d="M596,88 H614"/>
+          <rect class="n-code" x="616" y="64" width="128" height="48" rx="7"/>
+          <text class="nts" x="680" y="86" text-anchor="middle">harness decides ▣</text>
+          <text class="sub" x="680" y="100" text-anchor="middle">gates fail closed</text>
+          <!-- common case: gates pass, straight to merge -->
+          <path class="edge" style="marker-end:url(#ba-ah)" d="M744,88 H792"/>
+          <rect class="n-plain" x="796" y="64" width="76" height="48" rx="7"/>
+          <text class="nts" x="834" y="91" text-anchor="middle">merge</text>
+          <!-- conditional branch: high blast radius forces a human signature before merge -->
+          <path style="stroke:#B45309;stroke-width:1.4;fill:none;stroke-dasharray:5 4;marker-end:url(#ba-ah-h)" d="M680,112 V148 H714"/>
+          <rect class="n-human" x="718" y="126" width="112" height="44" rx="7"/>
+          <text class="nts" x="774" y="145" text-anchor="middle">human signs ◆</text>
+          <text class="sub" x="774" y="160" text-anchor="middle">then the merge</text>
+          <path style="stroke:#B45309;stroke-width:1.4;fill:none;stroke-dasharray:5 4;marker-end:url(#ba-ah-h)" d="M812,126 V113"/>
+          <text class="sub" x="484" y="152" text-anchor="start" style="fill:#824007">when the computed blast radius is high →</text>
+          <text class="sub" x="484" y="204" text-anchor="start">the consequence is code — identical on a re-run</text>
+          <text class="sub" x="484" y="224" text-anchor="start">a signature is forced by computation when the radius is high</text>
+        </svg>
+      </div>
+      <figcaption><b>The same change, two control models.</b> Today the model that proposes a change also effectively decides it — review is advisory. In sdd-fleet the model only proposes and the <b>harness</b> decides (▣, fail-closed, reproducible); most changes then merge directly, but a <b>human</b> signature (◆) is forced by computation wherever the blast radius — consumer count, money movement, PII — is high, and only then does the merge proceed.</figcaption>
+    </figure>
+  </div>
+</section>
+
+</main>
+
+
+<nav class="wrap pager" aria-label="Page sequence">
+  
+  <a class="pg-prev" href="/"><span class="pg-lab">← Previous</span>sdd-fleet — the brief</a>
+  
+  
+  <a class="pg-next" href="/architecture/"><span class="pg-lab">Next →</span>The control stack and its records</a>
+  
+</nav>
+
+
+<footer>
+  <div class="wrap">
+    <div>sdd-fleet — a Claude Code plugin · engineered for audit and replay</div>
+    <div>Deterministic harness · probabilistic generation · human accountability</div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -89,7 +89,10 @@ scripts/                      # deterministic, model-free helpers + their *.test
                               #   catalog/blast-radius derivation, the counterfactual
                               #   + coverage capture the review engine consumes,
                               #   run-tests
-docs/                         # contracts, smoke fixtures, history
+docs/                         # the GitHub Pages design site (index, boundary,
+                              #   architecture/*, provenance, pilot — the design
+                              #   source of truth per ADR-0002; the old monolith
+                              #   paths redirect), ADRs, smoke fixtures
 .github/workflows/ci.yml      # CI: test matrix + release-channel check
 ```
 
@@ -188,4 +191,6 @@ bash scripts/run-tests.sh        # every hook + script suite, then the smoke tes
 - Service descriptor + blast-radius rules -> the `service.json` schema and the
   catalog/blast-radius scripts.
 - Spec / acceptance / ADR structure -> `skills/sdd-spec-template`, `skills/adr`.
-- Design lineage -> `docs/history/` and the original sdd-fleet design doc.
+- Design authority & lineage -> the `docs/` site (the design documents are the
+  source of truth per ADR-0002; `scripts/docs-drift.test.sh` holds the site's
+  mirrored fragments to the protocol skill).
