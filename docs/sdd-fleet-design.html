@@ -424,13 +424,26 @@
       </div>
     </div>
 
-    <div class="planes">
-      <div class="plane" style="box-shadow:inset 3px 0 0 var(--code)"><div class="pn">The vault — two .sdd/ levels</div><div class="pr">One Obsidian vault over the submodules, but <b>two .sdd/ levels</b>: <b>workspace .sdd/</b> (epic plans, contract design, promoted lessons) and <b>each repo's own .sdd/</b> (that repo's specs, acceptance, ADRs). Each fact lives at exactly one level.</div><span class="own">owns · source of truth · the spine</span></div>
-      <div class="plane"><div class="pn">Jira</div><div class="pr">Intent, business value, roadmap, status, sign-off — plus a pointer to the plan.</div><span class="own">owns · human surface</span></div>
-      <div class="plane"><div class="pn">Contract registry</div><div class="pr">Published OpenAPI / Avro / proto, versioned, append-only.</div><span class="own">owns · the interface</span></div>
-      <div class="plane"><div class="pn">Service catalog</div><div class="pr">Dependency graph, reverse edges, blast radius.</div><span class="own">derived · recomputed</span></div>
-    </div>
-    <div class="note"><b>Direction of flow.</b> <b>epic-plan</b> authors the plan into the vault; a human ratifies it; <b>only then</b> is it materialised in Jira. Per-repo <span class="mono">jira-story &lt;ID&gt;</span> pulls the structured detail from the vault; status flows back up. Each fact is authoritative in <b>exactly one</b> place — the contract version is the registry’s, intent and status are Jira’s, the plan is the vault’s.</div>
+    <figure class="fd-fig">
+      <div class="fd-wrap">
+        <svg class="fd" viewBox="0 0 940 280" role="img" aria-label="The four record planes as a hub and spoke. The workspace vault is the single source of truth at the centre — it holds the plan across two .sdd/ levels. Jira (intent and status), the contract registry (versioned contracts), and the service catalog (derived and recomputed) orbit it. Each plane owns exactly one kind of fact, so no two stores can disagree.">
+          <ellipse cx="470" cy="140" rx="432" ry="104" fill="none" stroke="#AEB6C0" stroke-width="1.1" stroke-dasharray="3 6" opacity="0.6"/>
+          <rect class="n-plain" x="24" y="110" width="185" height="60" rx="8"/>
+          <text class="nts" x="116" y="136" text-anchor="middle">Jira</text>
+          <text class="sub" x="116" y="152" text-anchor="middle">intent · status · sign-off</text>
+          <rect class="n-plain" x="731" y="110" width="185" height="60" rx="8"/>
+          <text class="nts" x="823" y="136" text-anchor="middle">contract registry</text>
+          <text class="sub" x="823" y="152" text-anchor="middle">contracts · versioned</text>
+          <rect class="n-plain" x="360" y="210" width="220" height="54" rx="8" stroke-dasharray="5 4"/>
+          <text class="nts" x="470" y="234" text-anchor="middle">service catalog</text>
+          <text class="sub" x="470" y="250" text-anchor="middle">derived · recomputed</text>
+          <rect class="n-code" x="360" y="104" width="220" height="72" rx="9"/>
+          <text class="nt" x="470" y="134" text-anchor="middle" style="fill:#0a4a5c">workspace vault</text>
+          <text class="sub" x="470" y="152" text-anchor="middle" style="fill:#0a4a5c">source of truth · two .sdd/ levels</text>
+        </svg>
+      </div>
+      <figcaption><b>One fact, one store.</b> The <b>vault</b> holds the plan — the single source of truth; <b>Jira</b> owns intent + status, the <b>registry</b> owns versioned contracts, the <b>catalog</b> is derived. Each plane is authoritative for exactly one thing, so no two stores can disagree.</figcaption>
+    </figure>
     <div class="note" style="border-left-color:var(--human)"><b>In a bank's terms.</b> These planes map onto controls a regulator already recognises: the <b>replay trail</b> is examiner-ready change-control evidence; <b>ratification and the HANDOFF gate</b> are segregation-of-duties / four-eyes on money movement; <b>one fact, one store</b> means no conflicting systems of record to reconcile under audit. And the planes are likely tools you already run — Jira, a contract registry, a Backstage-style catalog, and a git-backed document store.</div>
 
     <h3 style="font-family:'Space Grotesk';font-size:1.16rem;margin:34px 0 6px;font-weight:600">The whole system as one flow</h3>
@@ -668,7 +681,40 @@
   - <span class="k">contract</span>: <span class="s">ledger.post</span>     <span class="k">version</span>: <span class="v">"&gt;=2.1 &lt;3"</span>
   - <span class="k">contract</span>: <span class="s">fraud.score</span>    <span class="k">version</span>: <span class="v">"&gt;=1.4 &lt;2"</span></pre>
 
-    <p class="body"><b>The catalog feeds the gates, not just the prompt.</b> Reverse edges make blast radius <em class="em">deterministic</em>: a contract change resolves to its N transitive consumers — computed, not guessed. So the human-gate rule is principled — “reaches N consumers, or a money-movement service” — not a hardcoded “touches auth.” A semver check and pinned-consumer lookup (both code) leave the model one call: <em>is this diff breaking beyond its version bump?</em></p>
+    <figure class="fd-fig">
+      <div class="fd-wrap">
+        <svg class="fd" viewBox="0 0 940 172" role="img" aria-label="Blast radius, computed. A change to the payments.authorise contract is resolved by a reverse-edge lookup to its three pinned consumers — checkout, disputes, statements. Because it reaches three consumers and the service is classed money_movement, a human gate is forced by computation, regardless of the machine's verdict.">
+          <defs>
+            <marker id="br-ah" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#4C515C"/></marker>
+            <marker id="br-ahh" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#B45309"/></marker>
+          </defs>
+          <rect class="n-code" x="20" y="58" width="180" height="56" rx="8"/>
+          <text class="nts" x="110" y="82" text-anchor="middle" style="fill:#0a4a5c">payments.authorise</text>
+          <text class="sub" x="110" y="98" text-anchor="middle" style="fill:#0a4a5c">a contract change</text>
+
+          <text class="sub" x="232" y="20" text-anchor="middle" style="fill:var(--ink-faint)">reverse edges → its consumers</text>
+          <path d="M200,86 L260,45" stroke="#4C515C" stroke-width="1.4" fill="none" marker-end="url(#br-ah)"/>
+          <path d="M200,86 L260,90" stroke="#4C515C" stroke-width="1.4" fill="none" marker-end="url(#br-ah)"/>
+          <path d="M200,86 L260,135" stroke="#4C515C" stroke-width="1.4" fill="none" marker-end="url(#br-ah)"/>
+
+          <rect class="n-plain" x="264" y="28" width="184" height="34" rx="6"/>
+          <text class="nts" x="356" y="49" text-anchor="middle">checkout · pinned @v3</text>
+          <rect class="n-plain" x="264" y="73" width="184" height="34" rx="6"/>
+          <text class="nts" x="356" y="94" text-anchor="middle">disputes · pinned @v3</text>
+          <rect class="n-plain" x="264" y="118" width="184" height="34" rx="6"/>
+          <text class="nts" x="356" y="139" text-anchor="middle">statements · pinned @v3</text>
+
+          <text class="sub" x="586" y="74" text-anchor="middle" style="fill:var(--ink-faint)">3 consumers · money_movement</text>
+          <path d="M448,90 H720" stroke="#B45309" stroke-width="1.5" fill="none" marker-end="url(#br-ahh)"/>
+
+          <rect class="n-human" x="724" y="58" width="196" height="56" rx="8"/>
+          <text class="nts" x="822" y="82" text-anchor="middle">human gate ◆</text>
+          <text class="sub" x="822" y="98" text-anchor="middle">forced by computation</text>
+        </svg>
+      </div>
+      <figcaption><b>Blast radius drives the human gate.</b> A reverse-edge lookup resolves a contract change to its N transitive consumers — computed, not guessed. Reaching N consumers, <em>or</em> touching a <span class="mono">money_movement</span> / PII service, forces a human gate regardless of the machine's verdict.</figcaption>
+    </figure>
+    <p class="body"><b>The catalog feeds the gates, not just the prompt.</b> The semver check and the pinned-consumer lookup are both code, leaving the model exactly one call — <em>is this diff breaking beyond its version bump?</em></p>
 
     <h3 style="font-family:'Space Grotesk';font-size:1.16rem;margin:32px 0 6px;font-weight:600">The conductor — autonomous dispatch <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);border:1px solid var(--line-strong);border-radius:5px;padding:.2em .5em;vertical-align:middle;margin-left:6px">optional</span></h3>
     <p class="body">The dispatch above is a <b>pull</b>: a developer runs <span class="mono">next-story</span> and starts the ready story. The <b>conductor</b> is the <b>optional autonomous</b> variant of that same resolver — a level-triggered reconciler (scripts only, no command, no model) that drives the frontier hands-off across a large estate. Each tick reads ground truth — status + the registry — <em>fresh</em>, signals the ready set, and holds no private state, so a crash mid-tick is invisible: on restart it resumes from real state. It <b>never invokes the per-repo machine</b> — it only signals — so pull and autonomous share the exact same <span class="mono">ready-frontier</span> core; the only difference is who pulls the trigger. See <a href="./adr/0001-conductor-execution-model.md">ADR-0001</a> for the execution &amp; deployment model.</p>
@@ -995,10 +1041,17 @@
       </div>
     </div>
 
-    <h3 style="font-family:'Space Grotesk';font-size:1.16rem;margin:34px 0 6px;font-weight:600">Two hardening rules that carry the weight</h3>
-    <p class="body"><b>A floor under detection.</b> The machine is good at refusing a bad concern, but nothing guarantees a real one gets raised — and three lenses of one model share blind spots. So each lens returns an explicit <em class="em">pass / fail / concern</em> on <b>every</b> criterion (silence becomes impossible), a dedicated adversarial pass hunts security, money and PII, and QA is grounded in real coverage output — not the model's opinion of it.</p>
-
-    <p class="body" style="margin-top:18px"><b>A trustworthy oracle.</b> Everything rests on the test suite, and the cheapest route to green is weakening the test. Two code-enforced fixes: every criterion maps to a test <em>before</em> implementation, and the test paths are <b>write-locked</b> for the run — the coder physically cannot edit them.</p>
+    <h3 style="font-family:'Space Grotesk';font-size:1.16rem;margin:34px 0 10px;font-weight:600">Two hardening rules that carry the weight</h3>
+    <div class="twocol">
+      <div class="card">
+        <h3>A floor under detection</h3>
+        <p>The machine is good at refusing a bad concern, but nothing guarantees a real one gets raised — three lenses of one model share blind spots. So each lens returns an explicit <em class="em">pass / fail / concern</em> on <b>every</b> criterion (silence becomes impossible), a dedicated adversarial pass hunts security, money and PII, and QA is grounded in real coverage output — not the model's opinion.</p>
+      </div>
+      <div class="card">
+        <h3>A trustworthy oracle</h3>
+        <p>Everything rests on the test suite, and the cheapest route to green is weakening the test. Two code-enforced fixes: every criterion maps to a test <em>before</em> implementation, and the test paths are <b>write-locked</b> for the run — the coder physically cannot edit them.</p>
+      </div>
+    </div>
 
     <div class="pull model">The survival vote is where the line is drawn most sharply: code checks what code can check; one neutral model judges the rest.</div>
 
@@ -1031,20 +1084,11 @@
         <p>Obsidian builds the backlink pane and the graph view <b>from those authored links</b> — nothing hand-kept, and it regenerates exactly from the record. Claude&nbsp;Code recovers the same neighbourhood by reading the links directly. Navigation is bidirectional, spans the whole workspace, and is a projection of recorded fact — never a model&#39;s recollection.</p>
       </div>
     </div>
-    <pre class="code"><span class="c"># workspace/   — ONE Obsidian vault · member repos are git submodules (pinned SHAs)</span>
-<span class="c">#   .sdd/                      ← WORKSPACE level · epic plans · contract design · lessons</span>
-<span class="c">#     epic-PAY-1842.md         plan + contract design — links DOWN into the repos</span>
-<span class="c">#   authoriser/                submodule @a1b2  (a member repo)</span>
-<span class="c">#     .sdd/                    ← REPO level · this repo's spec · acceptance · ADRs</span>
-<span class="c">#       spec.md  acceptance.md  ADR-217.md</span>
-<span class="c">#   checkout/   ledger/        …each its own submodule, each with its own .sdd/</span>
-
-<span class="c"># authoriser/.sdd/spec.md</span>
-Implements <span class="s">[PAY-1843](https://jira/PAY-1843)</span> · contract <span class="s">payments.authorise@3.3.0</span>
-See <span class="s">[acceptance](./acceptance.md)</span>
-<span class="c"># in-repo links are relative; refs outside this repo use a stable ID, never ../../</span>
-<span class="c"># backlinks are computed from these — never written by hand</span></pre>
-    <div class="pull">Forward links are the record; backlinks are the index derived from them — authored fact, deterministic projection, the same split drawn everywhere.</div>
+    <pre class="code"><span class="c"># workspace/  — ONE Obsidian vault; member repos are git submodules (pinned SHAs)</span>
+<span class="c">#   .sdd/               ← WORKSPACE level · epic plan · contract design · lessons</span>
+<span class="c">#   authoriser/ .sdd/   ← REPO level · spec.md · acceptance.md · ADR-217.md</span>
+<span class="c"># authoriser/.sdd/spec.md:  Implements </span><span class="s">[PAY-1843]</span><span class="c"> · </span><span class="s">payments.authorise@3.3.0</span><span class="c"> · </span><span class="s">[acceptance](./acceptance.md)</span>
+<span class="c"># backlinks are computed from these forward links — never written by hand</span></pre>
     <div class="note"><b>Memory stays out of the model's hands.</b> The vault is plain, diffable, git-versioned markdown that a human and Claude&nbsp;Code read identically; no model curates it, and a semantic index may sit on top for discovery but never feeds a gate.</div>
   </div>
 </section>
