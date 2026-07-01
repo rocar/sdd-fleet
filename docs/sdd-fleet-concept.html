@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sdd-fleet — Design Concept: four ideas, one boundary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EAEDF1; --paper-2:#E1E5EA; --card:#F4F6F8;
+    --ink:#15181F; --ink-soft:#4C515C; --ink-faint:#828893;
+    --line:#C7CDD5; --line-strong:#AEB6C0;
+    --code:#0E7490; --model:#5B6472; --human:#B45309;
+    --code-bg:#D9EDF2; --model-bg:#E7E9ED; --human-bg:#F4E9D8;
+    --p1:#2563EB; --p2:#7C3AED; --p3:#15803D; --p4:#B45309;
+    --p1-bg:#eaf1fe; --p2-bg:#f3edfd; --p3-bg:#e8f4ec; --p4-bg:#f4e9d8;
+    --maxw:1080px; --r:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Source Serif 4",Georgia,serif;font-size:18px;line-height:1.62;-webkit-font-smoothing:antialiased}
+  @media (max-width:640px){body{font-size:16.5px}}
+  h1,h2,h3,h4,.disp{font-family:"Space Grotesk",system-ui,sans-serif;letter-spacing:-0.01em}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+  a{color:var(--p1);text-decoration:none;border-bottom:1px solid rgba(37,99,235,.3)}
+  a:hover{border-bottom-color:var(--p1)}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 32px}
+  @media (max-width:640px){.wrap{padding:0 20px}}
+
+  /* tags */
+  .tag{display:inline-flex;align-items:center;gap:.4em;font-family:"JetBrains Mono",monospace;font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:.26em .55em;border-radius:5px;white-space:nowrap;line-height:1;vertical-align:middle}
+  .tag-code{color:#0a4a5c;background:var(--code-bg);border:1.5px solid var(--code)}
+  .tag-model{color:#3f4651;background:var(--model-bg);border:1.5px dashed var(--model)}
+  .tag-human{color:#824007;background:var(--human-bg);border:1.5px solid var(--human)}
+
+  /* hero */
+  .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#E6EAEF 0%,var(--paper) 70%)}
+  .grid-bg{position:absolute;inset:0;pointer-events:none;opacity:.5;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:34px 34px;-webkit-mask-image:radial-gradient(ellipse 80% 70% at 70% 0%,#000 0%,transparent 75%);mask-image:radial-gradient(ellipse 80% 70% at 70% 0%,#000 0%,transparent 75%)}
+  .hero-inner{position:relative;padding:80px 0 64px}
+  @media (max-width:640px){.hero-inner{padding:54px 0 44px}}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:12.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--code)}
+  h1{font-size:clamp(2.4rem,5.6vw,4.2rem);font-weight:700;line-height:1.03;margin:0 0 6px}
+  h1 .b2{color:var(--ink-faint)}
+  .lede{font-size:clamp(1.08rem,2vw,1.34rem);line-height:1.5;color:var(--ink-soft);max-width:48ch;margin:22px 0 0}
+  .lede b{color:var(--ink);font-weight:600}
+
+  section{padding:64px 0;border-bottom:1px solid var(--line)}
+  @media (max-width:640px){section{padding:44px 0}}
+  .sec-head{display:flex;gap:16px;align-items:baseline;margin-bottom:24px}
+  .sec-num{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:700;color:var(--code);flex:none;padding-top:.5em}
+  h2{font-size:clamp(1.6rem,3.4vw,2.3rem);font-weight:700;margin:0 0 6px;line-height:1.08}
+  .sec-sub{font-size:1.04rem;color:var(--ink-soft);margin:0;max-width:64ch}
+  .sec-sub b{color:var(--ink);font-weight:600}
+  p.body{max-width:68ch;color:var(--ink)}
+  p.body b{font-weight:600}
+  .em{font-style:italic}
+  .pull{border-left:3px solid var(--code);padding:4px 0 4px 18px;margin:22px 0;font-size:1.1rem;line-height:1.5;color:var(--ink);max-width:62ch}
+
+  figure{margin:18px 0 6px}
+  .fwrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:#EEF1F4;padding:18px}
+  figcaption{font-size:.88rem;color:var(--ink-soft);margin-top:10px;max-width:74ch;line-height:1.5}
+  figcaption b{color:var(--ink)}
+  svg{display:block;max-width:100%;height:auto;font-family:"JetBrains Mono",monospace}
+  .n{fill:#fff;stroke:var(--line-strong);stroke-width:1.5}
+  .n-code{fill:var(--code-bg);stroke:var(--code);stroke-width:1.6}
+  .n-model{fill:var(--model-bg);stroke:var(--model);stroke-width:1.5;stroke-dasharray:5 4}
+  .n-human{fill:var(--human-bg);stroke:var(--human);stroke-width:1.6}
+  .lbl{font-size:12px;font-weight:700;fill:var(--ink)}
+  .sub{font-size:10px;fill:var(--ink-faint)}
+  .edge{stroke:#4C515C;stroke-width:1.5;fill:none;marker-end:url(#ah)}
+  .edge-h{stroke:var(--human);stroke-width:1.6;fill:none;marker-end:url(#ahh)}
+
+  /* pillar grid */
+  .pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:8px 0}
+  @media (max-width:820px){.pillars{grid-template-columns:1fr 1fr}}
+  @media (max-width:480px){.pillars{grid-template-columns:1fr}}
+  .pill{border-radius:12px;padding:15px 15px 14px;border:1.5px solid}
+  .pill .k{font-family:"JetBrains Mono",monospace;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+  .pill h4{margin:0 0 6px;font-size:1.02rem;font-weight:600;color:var(--ink)}
+  .pill p{margin:0;font-size:.86rem;line-height:1.45;color:var(--ink-soft)}
+  .pill.p1{border-color:var(--p1);background:var(--p1-bg)} .pill.p1 .k{color:var(--p1)}
+  .pill.p2{border-color:var(--p2);background:var(--p2-bg)} .pill.p2 .k{color:var(--p2)}
+  .pill.p3{border-color:var(--p3);background:var(--p3-bg)} .pill.p3 .k{color:var(--p3)}
+  .pill.p4{border-color:var(--p4);background:var(--p4-bg)} .pill.p4 .k{color:var(--p4)}
+
+  /* flow strip */
+  .flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin:6px 0;font-family:"JetBrains Mono",monospace}
+  .flow .st{background:var(--card);border:1px solid var(--line-strong);border-radius:7px;padding:7px 11px;font-size:12.5px;color:var(--ink)}
+  .flow .gate{border-color:var(--code);color:#0a4a5c;background:var(--code-bg);font-weight:600}
+  .flow .arr{color:var(--ink-faint)}
+
+  /* two-panel */
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+  @media (max-width:760px){.two{grid-template-columns:1fr}}
+  .panel{border:1px solid var(--line-strong);border-radius:var(--r);padding:16px 18px;background:var(--card)}
+  .panel h4{margin:0 0 8px;font-size:1.04rem;font-weight:600}
+  .panel ul{margin:6px 0 0;padding-left:18px;font-size:.92rem;color:var(--ink-soft);line-height:1.5}
+  .panel.code{border-color:var(--code)} .panel.model{border-color:var(--model);border-style:dashed}
+  .panel.human{border-color:var(--human)}
+  .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:14px 0}
+  @media (max-width:760px){.three{grid-template-columns:1fr}}
+  .flow .hgate{border-color:var(--human);color:#824007;background:var(--human-bg);font-weight:600}
+  ol.trace{list-style:none;counter-reset:t;margin:16px 0 0;padding:0}
+  ol.trace li{counter-increment:t;position:relative;padding:11px 0 11px 46px;border-bottom:1px solid var(--line);font-size:.96rem;color:var(--ink);max-width:76ch}
+  ol.trace li:last-child{border-bottom:0}
+  ol.trace li::before{content:counter(t);position:absolute;left:0;top:9px;width:30px;height:30px;border-radius:50%;background:var(--card);border:1.5px solid var(--line-strong);font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:700;color:var(--code);display:flex;align-items:center;justify-content:center}
+  ol.trace li b{font-weight:600} ol.trace li .mono{font-size:.82em;color:var(--ink-soft)}
+
+  .borrow{margin:14px 0 0;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--code);border-radius:8px;padding:13px 16px;font-size:.95rem;color:var(--ink-soft)}
+  .borrow b{color:var(--ink)}
+  .borrow .k{font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--code);display:block;margin-bottom:4px}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:13px;color:var(--ink-soft)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .legend i{width:13px;height:13px;border-radius:3px;display:inline-block}
+
+  table.prov{width:100%;border-collapse:collapse;margin-top:10px;font-size:.9rem}
+  table.prov th,table.prov td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  table.prov th{background:var(--card);font-family:"Space Grotesk",sans-serif;font-size:.85rem}
+  table.prov td{color:var(--ink-soft)}
+  footer{padding:36px 0 52px;color:var(--ink-faint);font-family:"JetBrains Mono",monospace;font-size:12px}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .note{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--ink-faint);border-radius:8px;padding:13px 16px;margin-top:18px;font-size:.92rem;color:var(--ink-soft)}
+  .note b{color:var(--ink)}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="grid-bg"></div>
+  <div class="wrap hero-inner">
+    <p class="eyebrow"><span class="dot"></span> sdd-fleet · design concept · spec → system, governed</p>
+    <h1>Four ideas.<br><span class="b2">One boundary.</span></h1>
+    <p class="lede"><b>sdd-fleet</b> builds software from a spec across a regulated, multi-repo estate so that <b>every consequential step</b> — every merge gate, every review verdict, every contract publish — is <b>reproducible code, not a model's judgment</b>. The design is a <b>deterministic harness</b>: a control layer of plain code the AI runs <em>inside</em>. Code owns every consequence; the model judges only the narrow calls left over; a human owns the blast radius. It earns that guarantee by composing four proven ideas rather than inventing new ones — the provenance map is below.</p>
+  </div>
+</header>
+
+<main>
+
+<!-- 01 — the boundary -->
+<section id="boundary">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">01</div>
+      <div>
+        <h2>The boundary — <em>where code decides, where the model judges, where a human signs off</em></h2>
+        <p class="sec-sub">One line governs the whole system: <b>every consequence lives in code; the model judges only the irreducible residue; a human owns the blast radius.</b> Each layer is given exactly the authority it can be trusted with — and no more.</p>
+      </div>
+    </div>
+
+    <div class="three">
+      <div class="panel code">
+        <h4><span class="tag tag-code">Harness</span> owns every consequence</h4>
+        <ul>
+          <li>phase gates, the bounded review loop, survival-vote counting</li>
+          <li>semver + blast-radius computation, cross-repo dispatch</li>
+          <li><b>reproducible and fail-closed</b> — identical on a re-run, and if anything is missing or unverifiable the gate <b>blocks rather than allows</b></li>
+        </ul>
+      </div>
+      <div class="panel model">
+        <h4><span class="tag tag-model">Model</span> judges only the residue</h4>
+        <ul>
+          <li>the <b>irreducible residue</b> — the narrow, genuinely subjective calls no rule can settle</li>
+          <li>drafting a spec, per-criterion review, the single contested "is this diff breaking?" call</li>
+          <li>it never decides a consequence, and it never curates memory</li>
+        </ul>
+      </div>
+      <div class="panel human">
+        <h4><span class="tag tag-human">Human</span> owns the blast radius</h4>
+        <ul>
+          <li>the <b>blast radius</b> — how many dependent services a change reaches, and whether it touches money movement or PII</li>
+          <li>epic &amp; contract ratification before fan-out; money / PII sign-off; escalation resolution</li>
+          <li>a human signature wherever the risk is too high to automate</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="pull">Move a gate into a command's prose and you have moved a consequence into the model. So every consequence lives in a <b>hook or a workflow</b> — plain code, identical on a re-run.</div>
+  </div>
+</section>
+
+<!-- 02 — what this buys -->
+<section id="estate">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">02</div>
+      <div>
+        <h2>What this buys a regulated estate</h2>
+        <p class="sec-sub">The boundary is not philosophy — it pays out as concrete properties an auditor, a risk officer, and an engineering lead each care about.</p>
+      </div>
+    </div>
+
+    <div class="pillars">
+      <div class="pill p1"><div class="k">Replay</div><h4>Re-derive, don't recollect</h4><p>Every run reconstructs from the vault record — an auditor re-derives the decision instead of trusting anyone's memory of it.</p></div>
+      <div class="pill p3"><div class="k">Hard gates</div><h4>Sign-off by computation</h4><p>A change touching money-movement or PII data, or reaching N downstream consumers, forces a human gate — by code, not by a reviewer remembering to.</p></div>
+      <div class="pill p2"><div class="k">Multi-repo</div><h4>Contracts hold the estate together</h4><p>Published contracts are versioned and append-only; pinned consumers are stopped automatically on a breaking bump.</p></div>
+      <div class="pill p4"><div class="k">Precision</div><h4>Auditable &amp; replayable, not merely fast</h4><p>Every acceptance criterion maps to a test before code; the oracle is real coverage output, not the model's opinion of it.</p></div>
+    </div>
+
+    <div class="note" style="border-left-color:var(--human)"><b>Where humans stay in the loop.</b> Four points require a human signature — enforced by the harness, not left to convention:</div>
+    <div class="flow" style="margin-top:12px">
+      <span class="st hgate">epic + contract ratify ◆</span><span class="arr">·</span>
+      <span class="st hgate">money / PII sign-off ◆</span><span class="arr">·</span>
+      <span class="st hgate">blast-radius threshold ◆</span><span class="arr">·</span>
+      <span class="st hgate">escalation on non-convergence ◆</span>
+    </div>
+  </div>
+</section>
+
+<!-- 03 — worked example -->
+<section id="trace">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">03</div>
+      <div>
+        <h2>One change, end to end</h2>
+        <p class="sec-sub">A single unit of work — Jira <span class="mono">PAY-1843</span>, "add an instant-payout endpoint" — moving through the per-repo machine. Every gate below is code, not a reviewer's diligence.</p>
+      </div>
+    </div>
+
+    <ol class="trace">
+      <li><b>SPEC</b> — the spec and acceptance criteria are authored into the vault <span class="mono">.sdd/PAY-1843/</span>. Each criterion is mapped to a test path, and those paths are <b>write-locked</b> for the run so the oracle can't be edited to pass.</li>
+      <li><b>REVIEW</b> — three role lenses fan out and an adversarial pass flags a <b>money-movement</b> concern on the payout path. It survives the vote, so it becomes a blocker the loop must resolve.</li>
+      <li><b>FINALIZE ▣</b> — a fail-closed gate refuses to let <em>any</em> source be written until the spec is finalized and every criterion is traceable to a test. <span class="mono">SDD_FLEET_FINALIZE: {"ok":false,"reason":"untraceable_criterion"}</span> → resolved, then green.</li>
+      <li><b>BUILD</b> — code is generated against the finalized spec; the write-locked tests are the oracle it has to satisfy.</li>
+      <li><b>CHANGE_REVIEW</b> — blast radius is computed from the derived service catalog: this endpoint's contract has <b>4 pinned consumers</b>, and the data carries <span class="mono">money_movement</span>.</li>
+      <li><b>HANDOFF ◆</b> — either condition alone forces a human gate, regardless of the machine verdict. Handoff is <b>blocked</b> until a human signs off and the traceable suite passes. <span class="mono">SDD_FLEET_HANDOFF: {"ok":false,"reason":"human_gate_required"}</span></li>
+    </ol>
+    <figcaption style="margin-top:14px;font-size:.9rem;color:var(--ink-soft)">The model drafted and reviewed; <b>code</b> counted the vote, computed the blast radius, and held every gate; a <b>human</b> signed the money-movement release. The full trail is replayable from <span class="mono">.sdd/</span>.</figcaption>
+  </div>
+</section>
+
+<!-- 04 — the four pillars (provenance arc) -->
+<section id="pillars">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">04</div>
+      <div>
+        <h2>Provenance — the four ideas we composed</h2>
+        <p class="sec-sub">The guarantee above isn't invented; it's assembled. Four existing ideas each draw one edge of the same boundary — answering <b>what is true</b>, <b>who holds the plan</b>, <b>what survives review</b>, and <b>how memory holds</b>. This is where each piece comes from.</p>
+      </div>
+    </div>
+
+    <div class="pillars">
+      <div class="pill p1"><div class="k">Pillar 1 · what is true</div><h4>Spec-driven development</h4><p>The spec is the source of truth; code is a projection generated from it. Specify → Plan → Tasks → Implement.</p></div>
+      <div class="pill p2"><div class="k">Pillar 2 · who holds the plan</div><h4>Claude Code workflows</h4><p>Static primitives (commands · hooks · skills · agents) are the rails; dynamic workflows put the loop in code.</p></div>
+      <div class="pill p3"><div class="k">Pillar 3 · what survives</div><h4>Deep-research verify</h4><p>Fan out, let independent skeptics refute, and let a vote — not a model's whim — decide what stands.</p></div>
+      <div class="pill p4"><div class="k">Pillar 4 · how memory holds</div><h4>Obsidian's link model</h4><p>Authored forward links are the record; backlinks and the graph are a deterministic projection of them.</p></div>
+    </div>
+
+    <div class="legend" style="margin:8px 0 4px">
+      <span><i style="background:var(--code)"></i> Harness · code</span>
+      <span><i style="background:var(--model);border:1px dashed var(--model)"></i> Model</span>
+      <span><i style="background:var(--human)"></i> Human</span>
+    </div>
+    <figure>
+      <div class="fwrap">
+        <svg viewBox="0 0 960 440" role="img" aria-label="Four ideas — spec-driven dev, Claude Code workflows, deep-research verify, and Obsidian links — converge to a central boundary box: A DETERMINISTIC HARNESS over PROBABILISTIC GENERATION. The boundary is then partitioned, with no arrowheads, into its three owners of consequence: Harness, Model, and Human.">
+          <defs>
+            <marker id="ah"      markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#4C515C"/></marker>
+            <marker id="ahh"     markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#B45309"/></marker>
+            <marker id="ah-p1"   markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#2563EB"/></marker>
+            <marker id="ah-p2"   markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#7C3AED"/></marker>
+            <marker id="ah-p3"   markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#15803D"/></marker>
+            <marker id="ah-p4"   markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#B45309"/></marker>
+            <marker id="ah-code" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0E7490"/></marker>
+            <marker id="ah-mdl"  markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#5B6472"/></marker>
+          </defs>
+
+          <!-- four ideas · neutral slate — colour is reserved for the three owners below -->
+          <rect x="20" y="50" width="178" height="68" rx="8" fill="#EEF1F4" stroke="#AEB6C0" stroke-width="1.5"/>
+          <text class="lbl" x="109" y="76" text-anchor="middle">spec-driven dev</text>
+          <text class="sub" x="109" y="94" text-anchor="middle">spec = source of truth</text>
+
+          <rect x="762" y="50" width="178" height="68" rx="8" fill="#EEF1F4" stroke="#AEB6C0" stroke-width="1.5"/>
+          <text class="lbl" x="851" y="76" text-anchor="middle">Claude Code workflows</text>
+          <text class="sub" x="851" y="94" text-anchor="middle">rails + dynamic engines</text>
+
+          <rect x="20" y="290" width="178" height="68" rx="8" fill="#EEF1F4" stroke="#AEB6C0" stroke-width="1.5"/>
+          <text class="lbl" x="109" y="316" text-anchor="middle">deep-research verify</text>
+          <text class="sub" x="109" y="334" text-anchor="middle">refute · vote · survive</text>
+
+          <rect x="762" y="290" width="178" height="68" rx="8" fill="#EEF1F4" stroke="#AEB6C0" stroke-width="1.5"/>
+          <text class="lbl" x="851" y="316" text-anchor="middle">Obsidian links</text>
+          <text class="sub" x="851" y="334" text-anchor="middle">authored ↦ derived</text>
+
+          <!-- central boundary box -->
+          <rect x="232" y="164" width="496" height="80" rx="9" class="n-code"/>
+          <text class="lbl" x="480" y="194" text-anchor="middle" fill="#0a4a5c">A DETERMINISTIC HARNESS over PROBABILISTIC GENERATION</text>
+          <text class="sub" x="480" y="212" text-anchor="middle" fill="#0a4a5c">every consequence is code · the model judges only the residue · the human owns the blast radius</text>
+
+          <!-- diagonal arrows: each pillar's inner corner → nearest boundary box corner -->
+          <!-- gap above and below boundary is equal (46px each) → symmetric 53° diagonals -->
+          <path d="M198,118 L232,164" stroke="#4C515C" stroke-width="1.4" fill="none" marker-end="url(#ah)"/>
+          <path d="M762,118 L728,164" stroke="#4C515C" stroke-width="1.4" fill="none" marker-end="url(#ah)"/>
+          <path d="M198,290 L232,244" stroke="#4C515C" stroke-width="1.4" fill="none" marker-end="url(#ah)"/>
+          <path d="M762,290 L728,244" stroke="#4C515C" stroke-width="1.4" fill="none" marker-end="url(#ah)"/>
+
+          <!-- the boundary's three owners — teal / grey / orange is the ONLY colour language -->
+          <rect x="205" y="375" width="160" height="44" rx="7" class="n-code"/>
+          <text class="lbl" x="285" y="402" text-anchor="middle" fill="#0a4a5c">Harness ▣</text>
+          <rect x="400" y="375" width="160" height="44" rx="7" class="n-model"/>
+          <text class="lbl" x="480" y="402" text-anchor="middle" fill="#3f4651">Model</text>
+          <rect x="595" y="375" width="160" height="44" rx="7" class="n-human"/>
+          <text class="lbl" x="675" y="402" text-anchor="middle" fill="#824007">Human ◆</text>
+
+          <!-- partition, not production: one boundary divided into three owners — no arrowheads -->
+          <text class="sub" x="480" y="272" text-anchor="middle" fill="#0a4a5c">one boundary · three owners of consequence</text>
+          <path d="M285,244 V292 H675 V244" stroke="#AEB6C0" stroke-width="1.5" fill="none"/>
+          <path d="M285,292 V375" stroke="#0E7490" stroke-width="1.5" fill="none"/>
+          <path d="M480,292 V375" stroke="#5B6472" stroke-width="1.5" fill="none" stroke-dasharray="4 3"/>
+          <path d="M675,292 V375" stroke="#B45309" stroke-width="1.6" fill="none"/>
+        </svg>
+      </div>
+      <figcaption><b>The thesis in one picture.</b> Four ideas converge on one boundary, which divides into the three owners of consequence carried throughout: <span class="tag tag-code">Harness</span> owns every consequence (reproducible, fail-closed), <span class="tag tag-model">Model</span> judges only the irreducible residue, <span class="tag tag-human">Human</span> owns the blast radius.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- 01 — spec-driven -->
+<section id="spec">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">05</div>
+      <div>
+        <h2>Spec-driven development — <em>what is true</em></h2>
+        <p class="sec-sub">Spec-driven development (SDD) <b>inverts the code-first model</b>: the specification, not the code, is the source of truth. The spec is "executable" in that an agent generates the implementation from it — so <b>code becomes a continuously regenerated projection of the spec</b>, not the primary artifact.</p>
+      </div>
+    </div>
+    <p class="body">GitHub's Spec Kit frames the canonical loop as <b>Specify → Plan → Tasks → Implement</b>, each phase emitting a Markdown artifact that feeds the next: <em>specify</em> captures the what-and-why (deferring the tech stack), <em>plan</em> commits the how, <em>tasks</em> slices it into small reviewable units, <em>implement</em> executes. It suits AI agents because models complete patterns but cannot mind-read — a structured spec supplies the shared context a vague prompt cannot.</p>
+
+    <div class="flow">
+      <span class="st">intent</span><span class="arr">→</span>
+      <span class="st">SPEC</span><span class="arr">→</span>
+      <span class="st">REVIEW</span><span class="arr">→</span>
+      <span class="st gate">FINALIZE ▣</span><span class="arr">→</span>
+      <span class="st">BUILD</span><span class="arr">→</span>
+      <span class="st">CHANGE_REVIEW</span><span class="arr">→</span>
+      <span class="st gate">HANDOFF ◆</span>
+    </div>
+
+    <div class="borrow">
+      <span class="k">what sdd-fleet takes</span>
+      The phase spine above is SDD's <span class="mono">specify→plan→tasks→implement</span> hardened into a state machine. The <b>vault <span class="mono">.sdd/</span></b> is the spec-as-source-of-truth: specs, acceptance, ADRs live there as the durable record; source is the projection. sdd-fleet adds what SDD leaves to convention — a <b>fail-closed gate</b> (▣) at each transition (no source before <span class="mono">FINALIZED</span>; no handoff on a failing or untraceable suite), so the spec doesn't just <em>guide</em> generation, it <em>governs</em> it.
+    </div>
+  </div>
+</section>
+
+<!-- 02 — CC workflows -->
+<section id="workflows">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">06</div>
+      <div>
+        <h2>Claude Code workflows — <em>who holds the plan</em></h2>
+        <p class="sec-sub">Claude Code offers two registers of control. The defining difference is <b>who holds the plan</b>: with static primitives the model orchestrates turn by turn; a dynamic workflow <b>moves the loop into code</b>.</p>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="panel code">
+        <h4><span class="tag tag-code">Static</span> the rails</h4>
+        <ul>
+          <li><b>fixed entry points</b> — work starts only where the system allows, never mid-stream (slash commands)</li>
+          <li><b>tool-level gates</b> that fail closed at the boundary — e.g. no source written before the spec is finalized (hooks)</li>
+          <li><b>the rulebook the model loads</b> — the protocol and the review rubric (skills)</li>
+          <li><b>the role lenses</b> — architect · coder · QA, plus the sole writer of record (subagents)</li>
+        </ul>
+      </div>
+      <div class="panel model">
+        <h4><span class="tag tag-model">Dynamic</span> the engines</h4>
+        <ul>
+          <li>model-authored <b>code</b> that an isolated runtime executes in the background</li>
+          <li>the <b>script</b> holds the loop, the branching, and the intermediate results — not the chat context</li>
+          <li>deterministic and re-runnable; only the work <em>inside</em> each model call is model-powered</li>
+          <li>purpose-built engines for <b>spec review, change review, and build</b></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="borrow">
+      <span class="k">what sdd-fleet takes</span>
+      Both registers, deliberately. <b>Static primitives are the rails</b> — the commands, the fail-closed hooks, the skills — that a model can never bypass. <b>Dynamic workflows are the fan-out engines</b> — they hold the bounded review loop, the survival vote, and the state writes as <em>code</em>, so the consequence is identical on a re-run. The boundary the whole system rests on (<span class="mono">consequence in code, not prose</span>) is exactly Claude Code's own dynamic-vs-static distinction, applied as a design rule.
+    </div>
+  </div>
+</section>
+
+<!-- 03 — verify -->
+<section id="verify">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">07</div>
+      <div>
+        <h2>The deep-research verify pattern — <em>what survives</em></h2>
+        <p class="sec-sub">Deep-research agents establish a fact by <b>adversarial verification</b>: fan out to gather claims, then have <b>independent skeptics try to refute</b> each one, and let a <b>vote</b> — not a single model's say-so — decide what survives.</p>
+      </div>
+    </div>
+
+    <figure>
+      <div class="fwrap">
+        <svg viewBox="0 0 920 170" role="img" aria-label="The verify shape: a fan-out produces items, independent skeptic reviewers refute or affirm each item, and a code-level vote decides survival.">
+          <rect x="20" y="60" width="120" height="46" rx="7" class="n-model"/>
+          <text class="lbl" x="80" y="83" text-anchor="middle" fill="#3f4651">fan-out</text>
+          <text class="sub" x="80" y="98" text-anchor="middle">produce items</text>
+          <path class="edge" d="M140,83 L172,55"/><path class="edge" d="M140,83 L172,83"/><path class="edge" d="M140,83 L172,111"/>
+          <rect x="174" y="38" width="150" height="26" rx="6" class="n-model"/><text class="lbl" x="249" y="55" text-anchor="middle" fill="#3f4651">skeptic 1 · refute?</text>
+          <rect x="174" y="70" width="150" height="26" rx="6" class="n-model"/><text class="lbl" x="249" y="87" text-anchor="middle" fill="#3f4651">skeptic 2 · refute?</text>
+          <rect x="174" y="102" width="150" height="26" rx="6" class="n-model"/><text class="lbl" x="249" y="119" text-anchor="middle" fill="#3f4651">skeptic 3 · refute?</text>
+          <path class="edge" d="M324,51 L360,76"/><path class="edge" d="M324,83 L360,83"/><path class="edge" d="M324,115 L360,90"/>
+          <rect x="362" y="60" width="150" height="46" rx="7" class="n-code"/>
+          <text class="lbl" x="437" y="80" text-anchor="middle" fill="#0a4a5c">VOTE ▣</text>
+          <text class="sub" x="437" y="96" text-anchor="middle">a count, not a call</text>
+          <path class="edge" d="M512,83 H556"/>
+          <rect x="558" y="60" width="160" height="46" rx="7" class="n"/>
+          <text class="lbl" x="638" y="80" text-anchor="middle">survives / dies</text>
+          <text class="sub" x="638" y="96" text-anchor="middle">deterministic outcome</text>
+        </svg>
+      </div>
+      <figcaption><b>The shape both share.</b> An independent agent challenges another agent's output; a code-level count — never a model's ad-hoc call — decides survival. sdd-fleet's REVIEW and CHANGE_REVIEW run exactly this engine on a spec or a diff.</figcaption>
+    </figure>
+
+    <div class="two">
+      <div class="panel model">
+        <h4>deep-research · skeptical of the <em>claims</em></h4>
+        <ul>
+          <li>a claim is <b>guilty until proven innocent</b></li>
+          <li>if a skeptic is uncertain it defaults to refuted; if all abstain, the claim is killed</li>
+          <li>goal: <b>precision</b> — keep only what verifies (protect the report from false claims)</li>
+        </ul>
+      </div>
+      <div class="panel code">
+        <h4>sdd-fleet · skeptical of the <em>work</em></h4>
+        <ul>
+          <li>a concern is <b>innocent until proven guilty</b></li>
+          <li>it <b>survives unless</b> refuted by a different role with a resolving citation, judged sound by one neutral adjudicator</li>
+          <li>goal: <b>recall</b> — a guaranteed floor on what gets caught (never miss a real defect)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="borrow">
+      <span class="k">what sdd-fleet takes — and flips</span>
+      The <b>machinery</b> is identical (fan-out → adversarial challenge → code-level vote), but the <b>burden of proof is inverted</b>. And the vote here carries a <b>consequence</b>: a surviving blocker doesn't just drop from a report — it <b>blocks the merge</b>, the loop is bounded (≤3, count-must-fall), and it <b>escalates to a human</b>. Verification becomes a control gate, not a quality filter.
+    </div>
+  </div>
+</section>
+
+<!-- 04 — Obsidian -->
+<section id="links">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">08</div>
+      <div>
+        <h2>Obsidian's link model — <em>how memory holds</em></h2>
+        <p class="sec-sub">In Obsidian, you author <b>forward links</b> in your notes; the <b>backlink pane and the graph view are derived</b> — computed from those authored links, never hand-kept. The record is what you wrote; the index is a projection of it.</p>
+      </div>
+    </div>
+
+    <figure>
+      <div class="fwrap">
+        <svg viewBox="0 0 900 150" role="img" aria-label="Forward links authored in documents are the record; backlinks and the graph view are a deterministic projection derived from them.">
+          <rect x="20" y="30" width="300" height="90" rx="9" class="n"/>
+          <text class="lbl" x="170" y="52" text-anchor="middle">authored forward links</text>
+          <text class="sub" x="170" y="70" text-anchor="middle">spec.md → [acceptance](./acceptance.md)</text>
+          <text class="sub" x="170" y="86" text-anchor="middle">epic → [PAY-1843] · contract@3.3.0</text>
+          <text class="sub" x="170" y="104" text-anchor="middle" fill="#0a4a5c">the RECORD — reviewed, diffable, in the PR</text>
+          <path class="edge" d="M320,75 H420"/>
+          <text class="sub" x="370" y="66" text-anchor="middle">derive</text>
+          <rect x="422" y="30" width="300" height="90" rx="9" class="n-code"/>
+          <text class="lbl" x="572" y="52" text-anchor="middle" fill="#0a4a5c">backlinks · graph</text>
+          <text class="sub" x="572" y="70" text-anchor="middle">who links here? · the neighbourhood</text>
+          <text class="sub" x="572" y="86" text-anchor="middle">regenerates exactly from the record</text>
+          <text class="sub" x="572" y="104" text-anchor="middle" fill="#0a4a5c">the INDEX — never authored by hand</text>
+          <text class="sub" x="740" y="64">model may</text>
+          <text class="sub" x="740" y="78">read it,</text>
+          <text class="sub" x="740" y="92">never curate it</text>
+        </svg>
+      </div>
+      <figcaption><b>Authored record, derived index.</b> The same split sdd-fleet draws everywhere: forward links are authored fact; backlinks and the graph are a deterministic projection that regenerates exactly.</figcaption>
+    </figure>
+
+    <div class="borrow">
+      <span class="k">what sdd-fleet takes</span>
+      The vault is one Obsidian vault over the member repos, so memory is <b>plain-markdown forward links</b> — reviewed in the PR, diffable, as auditable as the prose around them — while the backlink graph is a <b>derived projection</b> a human and the agent recover identically. The discipline that falls out: <b>standard markdown links, no <span class="mono">[[wikilinks]]</span></b> (they die on GitHub and to the gate parsers), cross-tree refs by stable ID, and a semantic index may sit on top for discovery but <b>never feeds a gate</b>. Memory is authored, never model-curated.
+    </div>
+  </div>
+</section>
+
+<!-- 05 — synthesis -->
+<section id="synthesis">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">09</div>
+      <div>
+        <h2>The synthesis</h2>
+        <p class="sec-sub">Each pillar supplies one face of the same boundary. Together they make a system that is <b>auditable and replayable</b>, not merely fast.</p>
+      </div>
+    </div>
+
+    <table class="prov">
+      <thead><tr><th>Pillar</th><th>Contributes</th><th>To the boundary</th></tr></thead>
+      <tbody>
+        <tr><td><b>Spec-driven</b></td><td>the spec as source of truth; the phase spine</td><td>fixes the <span class="tag tag-code">deterministic</span> record the model generates against</td></tr>
+        <tr><td><b>Claude Code workflows</b></td><td>static rails + dynamic engines; "plan in code"</td><td>makes every <em>consequence</em> code; only the residue is <span class="tag tag-model">model</span></td></tr>
+        <tr><td><b>Deep-research verify</b></td><td>fan-out → refute → vote (inverted default)</td><td>turns review into a fail-closed gate, escalating to the <span class="tag tag-human">human</span></td></tr>
+        <tr><td><b>Obsidian links</b></td><td>authored forward links; derived backlinks/graph</td><td>keeps memory a <span class="tag tag-code">deterministic</span> projection, never model-curated</td></tr>
+      </tbody>
+    </table>
+
+    <div class="pull">Deterministic where it counts, model-judged only at the residue, human-owned at the blast radius — assembled from four ideas that each already drew one edge of that line.</div>
+
+    <div class="note"><b>Operating tradeoffs, honestly.</b> This optimises for audit and replay, not raw speed — the gates, the bounded review loop, and the per-criterion checks cost wall-clock and tokens. The human gates concentrate load on a few approvers (epic / contract ratification, money / PII sign-off), and most of the engineering effort shifts up-front into the spec and its acceptance tests. The payoff is a change you can re-derive and defend, not one you produced fastest.</div>
+
+    <div class="legend">
+      <span><i style="background:var(--code)"></i> Harness owns the consequence</span>
+      <span><i style="background:var(--model);border:1px dashed var(--model)"></i> Model judges the residue</span>
+      <span><i style="background:var(--human)"></i> Human owns the blast radius</span>
+    </div>
+
+    <div class="note"><b>Provenance &amp; honesty.</b> The framings of <b>spec-driven development</b> and <b>Claude Code's static / dynamic workflows</b> are grounded in the primary sources below. The <b>verify pattern</b> is documented for Claude Code's dynamic workflows; the multi-vote, default-to-refuted specifics are sdd-fleet's own. The <b>Obsidian authored-vs-derived</b> model is adopted as a documented design principle (see this repo's <span class="mono">CLAUDE.md</span> and <a href="./sdd-fleet-design.html">sdd-fleet-design.html</a>).</div>
+  </div>
+</section>
+
+<!-- 10 — the ask -->
+<section id="pilot">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">10</div>
+      <div>
+        <h2>What a pilot would take</h2>
+        <p class="sec-sub">A first run is deliberately small — scoped to produce one replayable audit trail end to end, so the property being evaluated is the trail, not the wall-clock.</p>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="panel">
+        <h4>Scope</h4>
+        <ul>
+          <li>1–2 member repos, one epic</li>
+          <li>one cross-repo contract in play, so blast-radius and the human gate actually fire</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Prerequisites</h4>
+        <ul>
+          <li>Claude Code + the sdd-fleet plugin</li>
+          <li>a workspace vault over the repos; a <span class="mono">service.json</span> descriptor per repo</li>
+          <li>contract-registry and Jira access</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>What the bank staffs</h4>
+        <ul>
+          <li>gate approvers for epic/contract ratification and money / PII sign-off</li>
+          <li>an escalation owner for non-converging reviews</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Success criteria</h4>
+        <ul>
+          <li>a replayable audit trail re-derived from <span class="mono">.sdd/</span></li>
+          <li>zero un-gated money / PII merges</li>
+          <li>every acceptance criterion traced to a test before code</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="pull">The ask: pick one epic in one or two repos and run it end to end — then measure the audit trail, not the speed.</div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>sdd-fleet — design concept · the synthesis of four ideas</span>
+    <span>see also: sdd-fleet-design.html (the architecture &amp; governance)</span>
+  </div>
+  <div class="wrap" style="margin-top:14px;display:block">
+    <div class="sub" style="font-family:'JetBrains Mono',monospace;color:var(--ink-faint);font-size:11px;line-height:1.7">
+      Sources (verified) —
+      Spec Kit: github.com/github/spec-kit · spec-kit/spec-driven.md · github.github.com/spec-kit · github.blog “spec-driven development with AI” · developer.microsoft.com “spec-driven development &amp; Spec Kit”.
+      Claude Code workflows: claude.com/blog “a harness for every task — dynamic workflows” · code.claude.com/docs/en/workflows.
+      Obsidian link/backlink/graph model: help.obsidian.md (the tool's documented behavior, adopted as a design principle).
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
