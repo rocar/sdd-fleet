@@ -20,3 +20,6 @@ node_modules/
 # Local scratch — LinkedIn card renders, throwaway API bodies, etc.
 .scratch/
 .playwright-mcp/
+
+# Jekyll local-preview build output
+docs/_site/

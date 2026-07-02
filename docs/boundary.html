@@ -9,72 +9,18 @@ next:
   url: /architecture/
   title: "The control stack and its records"
 ---
-<!-- ============ 01 THE BOUNDARY ============ -->
-<section id="boundary">
+<!-- ============ 01 THE BOUNDARY · THE DECISION LEDGER ============ -->
+<section id="ledger">
   <div class="wrap">
     <div class="sec-head">
       <div class="sec-num">01</div>
-      <div>
+      <div class="sec-title-wrap">
         <h2>The boundary — <em>where code decides, where the model judges, where a human signs off</em></h2>
-        <p class="sec-sub">One line governs the whole system: <b>every consequence lives in code; the model judges only the irreducible residue; a human owns the blast radius.</b> Each layer is given exactly the authority it can be trusted with — and no more.</p>
-      </div>
-    </div>
-
-    <div class="three">
-      <div class="panel code">
-        <h4><span class="tag tag-code">Harness</span> owns every consequence</h4>
-        <ul>
-          <li>phase gates, the bounded review loop, survival-vote counting (a concern stands unless refuted with evidence, and the counting is code)</li>
-          <li>semver + blast-radius computation, cross-repo dispatch</li>
-          <li><b>reproducible and fail-closed</b> — identical on a re-run, and if anything is missing or unverifiable the gate <b>blocks rather than allows</b></li>
-        </ul>
-      </div>
-      <div class="panel model">
-        <h4><span class="tag tag-model">Model</span> judges only the residue</h4>
-        <ul>
-          <li>the <b>irreducible residue</b> — the narrow, genuinely subjective calls no rule can settle</li>
-          <li>drafting a spec, per-criterion review, the single contested "is this diff breaking?" call</li>
-          <li>it never decides a consequence, and it never curates memory</li>
-        </ul>
-      </div>
-      <div class="panel human">
-        <h4><span class="tag tag-human">Human</span> owns the blast radius</h4>
-        <ul>
-          <li>the <b>blast radius</b> — how many dependent services a change reaches, and whether it touches money movement or PII</li>
-          <li>epic &amp; contract ratification before fan-out; money / PII sign-off; escalation resolution</li>
-          <li>a human signature wherever the risk is too high to automate</li>
-        </ul>
+        <p class="sec-sub">One line governs the whole system: <b>every consequence lives in code; the model judges only the irreducible residue; a human owns the blast radius.</b> Every decision falls into one of the three columns below — the division itself is what an auditor examines.</p>
       </div>
     </div>
 
     <div class="pull">A gate written as instructions to the model is a consequence handed to the model. So every consequence lives in a <b>hook or a workflow</b> — plain code, identical on a re-run.</div>
-  </div>
-</section>
-
-<!-- ============ 02 WHY THE SCAFFOLDING EXISTS ============ -->
-<section id="principle">
-  <div class="wrap">
-    <div class="sec-head">
-      <div class="sec-num">02</div>
-      <div class="sec-title-wrap">
-        <h2>Why the scaffolding exists</h2>
-        <p class="sec-sub">An AI agent generates <em>plausible</em> code non-deterministically — re-run the same prompt, get a different answer — and left unbounded, it also decides its own consequences: whether a concern matters, whether to merge. When a wrong call can move money or leak PII, “it usually gets it right” is not a control, and nothing about the run is reproducible or auditable. The response is not a better model. It is a deterministic harness over probabilistic generation — a control layer of plain code the model works inside.</p>
-      </div>
-    </div>
-    <p class="body">Every input that could vary run-to-run — what a reviewer flags, how code is written — is the model's. Every <em class="em">consequence</em> drawn from those outputs — does a concern survive, does a gate open, does this escalate — is the <b>harness</b>: pure code, identical on a re-run. The model judges; the harness decides what happens next. The <em>residue</em> left to the model is the narrow set of subjective calls no rule can settle — a draft, a review judgement, one contested decision. That single boundary is what makes the system auditable, and it is drawn — by colour — on every diagram across this site.</p>
-  </div>
-</section>
-
-<!-- ============ 03 THE DECISION LEDGER ============ -->
-<section id="ledger">
-  <div class="wrap">
-    <div class="sec-head">
-      <div class="sec-num">03</div>
-      <div class="sec-title-wrap">
-        <h2>The decision ledger</h2>
-        <p class="sec-sub">Every decision in the system falls into one of three columns. The division itself is what an auditor examines.</p>
-      </div>
-    </div>
 
     <div class="ledger">
       <div class="led c">
@@ -85,6 +31,7 @@ next:
           <li>Semver &amp; pinned-consumer checks</li>
           <li>Blast-radius computation</li>
           <li>Workspace dispatch &amp; reconciliation</li>
+          <li><b>Fail-closed</b> — anything missing or unverifiable blocks rather than allows</li>
         </ul>
       </div>
       <div class="led m">
@@ -109,20 +56,15 @@ next:
       </div>
     </div>
 
-    <div class="replay">
-      <div class="rl">▣ The audit line</div>
-      <p>From artifacts that were <b style="color:#7fd1c4">gated, not asserted</b> — each repo's <span class="q">.sdd/</span> history, the pinned-SHA workspace commit, the registry's version history, Jira's sign-offs — the trail re-derives one sentence: <span class="q">“checkout's step-up change was built against catalog snapshot vX, authorise@3.3.0, additive per ADR-217, human sign-off by Y, contract tests green on a write-locked suite.”</span></p>
-    </div>
-
-    <div class="note">Replay here means re-deriving that decision trail from the record, not regenerating identical code — defined in full on <a href="index.html#brief">the brief</a>.</div>
+    <p class="body">The trail this ledger leaves re-derives the audit sentence — defined on <a href="index.html#brief">the brief</a>.</p>
   </div>
 </section>
 
-<!-- ============ 04 WHAT ACTUALLY CHANGES ============ -->
+<!-- ============ 02 WHAT ACTUALLY CHANGES ============ -->
 <section id="before-after" style="border-bottom:0">
   <div class="wrap">
     <div class="sec-head">
-      <div class="sec-num">04</div>
+      <div class="sec-num">02</div>
       <div class="sec-title-wrap">
         <h2>What actually changes</h2>
         <p class="sec-sub">The same change, under two control models. The difference is not the model or the tooling; it is who holds the decision at each step.</p>
@@ -173,12 +115,11 @@ next:
           <text class="nts" x="774" y="145" text-anchor="middle">human signs ◆</text>
           <text class="sub" x="774" y="160" text-anchor="middle">then the merge</text>
           <path style="stroke:#B45309;stroke-width:1.4;fill:none;stroke-dasharray:5 4;marker-end:url(#ba-ah-h)" d="M812,126 V113"/>
-          <text class="sub" x="484" y="152" text-anchor="start" style="fill:#824007">when the computed blast radius is high →</text>
           <text class="sub" x="484" y="204" text-anchor="start">the consequence is code — identical on a re-run</text>
           <text class="sub" x="484" y="224" text-anchor="start">a signature is forced by computation when the radius is high</text>
         </svg>
       </div>
-      <figcaption><b>The same change, two control models.</b> Today the model that proposes a change also effectively decides it — review is advisory. In sdd-fleet the model only proposes and the <b>harness</b> decides (▣, fail-closed, reproducible); most changes then merge directly, but a <b>human</b> signature (◆) is forced by computation wherever the blast radius — consumer count, money movement, PII — is high, and only then does the merge proceed.</figcaption>
+      <figcaption><b>The same change, two control models.</b> Re-run the same prompt and the generation differs; what must not differ is the consequence.</figcaption>
     </figure>
   </div>
 </section>

@@ -16,27 +16,25 @@ next:
       <div class="sec-num">01</div>
       <div class="sec-title-wrap">
         <h2>The architecture: a control stack and its records</h2>
-        <p class="sec-sub">The architecture has two halves: a stack of three control layers — who acts — over the <b>record planes</b> where truth lives. At the centre is the workspace vault, the single source of truth that Jira, the registry and the catalog orbit. Each store owns exactly one kind of fact, because the classic failure is two stores claiming the same truth.</p>
+        <p class="sec-sub">The architecture has two halves: a stack of three control layers — who acts — over the <b>record planes</b> where truth lives.</p>
       </div>
     </div>
-
-    {% include boundary-strip.html %}
 
     <div class="stack">
       <div class="layer l-con">
         <span class="lab">Layer 3 · workspace</span>
         <h3>The workspace — plan above, pull below <span class="tag tag-model">Model</span> <span class="tag tag-code">Harness</span> <span class="tag tag-human">Human</span></h3>
-        <p>A parent folder over the member repos — git submodules, one Obsidian vault. <b>epic-plan</b> (model&nbsp;+&nbsp;human) authors the dependency DAG and the contract design into <span class="mono">workspace/.sdd/</span>, ratified by a human before any work spreads to the repos. A developer then pulls the next ready story with <span class="mono">next-story</span> — a deterministic resolver over live status + the registry — and starts it. The <b>conductor</b> is the <em>optional</em> autonomous variant of that same resolver: a level-triggered reconciler — it re-reads live state every cycle instead of trusting memory — with no model in the loop. The widest-blast-radius layer is therefore the most deterministic, not the least. Planning is a command; dispatch is deterministic plumbing.</p>
+        <p>Plan and ratify above, pull below — detail: <a href="workspace.html">the workspace</a>.</p>
       </div>
       <div class="layer l-repo">
         <span class="lab">Layer 2 · per-repo</span>
         <h3>The feature machine — one per repository <span class="tag tag-model">Model</span> <span class="tag tag-code">Harness</span></h3>
-        <p>SPEC&nbsp;→&nbsp;REVIEW&nbsp;→&nbsp;FINALIZE&nbsp;→&nbsp;BUILD&nbsp;→&nbsp;CHANGE&nbsp;REVIEW&nbsp;→&nbsp;HANDOFF. A <b>coded harness</b> runs the phases and routes the work; the model only drafts and reviews <em>within</em> them, never writing source or reordering a phase. Single-worktree, so two changes never race in one repo.</p>
+        <p>SPEC&nbsp;→&nbsp;REVIEW&nbsp;→&nbsp;FINALIZE&nbsp;→&nbsp;BUILD&nbsp;→&nbsp;CHANGE&nbsp;REVIEW&nbsp;→&nbsp;HANDOFF — one machine per repository, single-worktree — detail: <a href="feature-machine.html">the feature machine</a>.</p>
       </div>
       <div class="layer l-gate">
         <span class="lab">Layer 1 · enforcement</span>
         <h3>Hooks — enforcement at the tool boundary <span class="tag tag-code">Harness</span></h3>
-        <p>The harness owns the <em>sequence</em>; the hooks own the <em>boundary</em>. They are <b>fail-closed</b> — a gate's default is to block, and opening it takes an explicit, coded allow, so a missing or unverifiable check stops the action rather than letting it slip through. They block a forbidden action however it is initiated — no source before the spec is finalized, no handoff on a failing or untraceable suite, no contract change without a published, version-bumped spec — catching any deviation the harness did not foresee, the model going off-script inside a phase included. This layer is why Claude&nbsp;Code specifically: hooks intercept at the tool level, in-session, so a forbidden write is blocked before it happens rather than commented on afterwards, and review runs in separate subagent lenses the drafting model cannot overrule. An assistant that can only suggest changes has no equivalent enforcement point.</p>
+        <p><b>Fail-closed</b> interception at the tool boundary — why Claude&nbsp;Code specifically: hooks intercept in-session at the tool level; an assistant that can only suggest changes has no equivalent enforcement point.</p>
       </div>
     </div>
 
@@ -68,42 +66,12 @@ next:
           <text class="sub" x="705" y="256" text-anchor="middle">derived — registry + service.json descriptors</text>
         </svg>
       </div>
-      <figcaption><b>One fact, one store.</b> The vault holds the plan — the single source of truth; Jira owns intent + status, the registry owns versioned contracts, the catalog is derived. Each plane is authoritative for exactly one thing, so no two stores can disagree. Spokes show the flows: status to Jira, publish-on-merge to the registry, and a dashed derivation into the catalog.</figcaption>
+      <figcaption><b>One fact, one store.</b> The vault holds the plan — the single source of truth; Jira owns intent + status, the registry owns versioned contracts, the catalog is derived. Each plane is authoritative for exactly one thing, so no two stores can disagree.</figcaption>
     </figure>
 
-    <div class="note" style="border-left-color:var(--human)">
-      <b>In a bank's terms.</b> These planes map onto controls a regulator already recognises:
-      <table class="prov">
-        <thead><tr><th>Control a regulator recognises</th><th>The sdd-fleet mechanism</th></tr></thead>
-        <tbody>
-          <tr><td><b>Change-control evidence</b></td>
-              <td>The replayable trail: gated <span class="mono">.sdd/</span> artifacts, the pinned-SHA
-                  workspace commit, the registry's version history, Jira sign-offs — the audit sentence is
-                  <em>re-derived from the record</em>, not recollected.</td></tr>
-          <tr><td><b>Four-eyes / segregation of duties</b></td>
-              <td>Epic &amp; contract ratification before any fan-out; a HANDOFF approval forced by the
-                  <em>computed</em> blast radius (≥N consumers, or <span class="mono">money_movement</span> /
-                  <span class="mono">pii</span> data classes) — and the approval is pinned to the blast-radius
-                  signature, going stale if the radius widens.</td></tr>
-          <tr><td><b>Single system of record</b></td>
-              <td>One fact, one store: the vault <span class="mono">.sdd/</span> is the source of truth; Jira owns
-                  intent + status; the registry owns versioned contracts (append-only); the catalog is derived and
-                  recomputed.</td></tr>
-          <tr><td><b>Testing-evidence integrity</b></td>
-              <td>Every acceptance criterion maps to a test <em>before</em> implementation (traceability gate);
-                  test paths are write-locked for the run so the oracle cannot be edited to pass; QA verdicts are
-                  grounded in captured coverage output, never the model's opinion of it.</td></tr>
-          <tr><td><b>Model-risk boundary</b></td>
-              <td>The model never decides a consequence: gates, vote counting, routing, semver and blast-radius
-                  are code. Its judgement calls are enumerated and logged — drafting, per-criterion review, one
-                  soundness verdict per contested refutation, one "is this diff breaking?" call.</td></tr>
-        </tbody>
-      </table>
-      And the planes are likely tools you already run — Jira, a contract registry, a Backstage-style catalog, and a git-backed document store.
-    </div>
+    <div class="note"><b>Familiar tools.</b> The planes are likely systems a bank already runs — Jira, a contract registry, a Backstage-style catalog, and a git-backed document store.</div>
 
     <h3 style="font-family:'Space Grotesk';font-size:1.16rem;margin:34px 0 6px;font-weight:600">The whole system as one flow</h3>
-    <p class="body">The three layers and the record planes, traced end to end for a single change — from a business intent to a replayable audit trail. The detailed views expand the two shaded lanes: <a href="workspace.html">Layer 3 — the workspace</a> and <a href="feature-machine.html">Layer 2 — inside one repository</a>.</p>
     <figure class="fd-fig">
       <div class="fd-wrap">
         <svg class="fd" viewBox="0 0 1010 470" role="img" aria-label="sdd-fleet end to end, for one change. WORKSPACE Layer 3: a business intent runs epic-plan (model plus human), which authors the plan and contract design into the vault; a human ratifies it before fan-out; only then is the Jira epic and its stories written, each seeded with high-level context; a developer then pulls the next ready story with next-story and starts it, and the same frontier can be driven autonomously by an optional conductor. PER-REPO Layer 2: jira-story with a story ID reads its Jira story as starting context, then runs the phase spine SPEC, REVIEW, FINALIZE gate, BUILD, CHANGE REVIEW, HANDOFF; Layer 1 hooks enforce the code gates — testability, traceability, write-lock, dependency, counterfactual — fail-closed at the tool boundary. HANDOFF is executed by devops, with a human approval forced when the computed blast radius is risky; on merge the contract publishes to the registry and the catalog rebuilds, leaving a gated, replayable audit trail. Status flows back to Jira throughout and cross-service lessons are promoted into the vault by a human.">

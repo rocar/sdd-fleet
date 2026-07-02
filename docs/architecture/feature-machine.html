@@ -15,10 +15,9 @@ next:
       <div class="sec-num">01</div>
       <div class="sec-title-wrap">
         <h2>Inside one repository</h2>
-        <p class="sec-sub">One state machine carries one change from intent to merge, inside a single repository. The same three review lenses — architect, coder, QA — are applied at every stage, so design rigour, implementation and quality are weighed throughout, not only at the review phases.</p>
+        <p class="sec-sub">One state machine carries one change from intent to merge, inside a single repository.</p>
       </div>
     </div>
-    {% include boundary-strip.html %}
 
         <figure class="fd-fig">
           <div class="fd-wrap">
@@ -42,7 +41,7 @@ next:
               <text class="sub" x="16" y="106" text-anchor="start" style="fill:var(--ink-soft)">Pull entry — ❯ next-story &lt;epic&gt; → ❯ jira-story &lt;story id&gt; → the spine</text>
             </svg>
           </div>
-          <figcaption><b>One change, one repository — the phase spine.</b> A developer resolves the next ready story with <span class="mono">next-story &lt;epic&gt;</span> and starts it here with <span class="mono">jira-story &lt;story id&gt;</span>. <span class="tag tag-code">FINALIZE</span> is a code gate (no source before the spec is frozen); <span class="tag tag-human">HANDOFF</span> is shipped by devops, with a human approve forced when the computed blast radius is risky (≥N consumers, or money / PII). <b>REVIEW</b> and <b>CHANGE REVIEW</b> run the same bounded engine — a lens fan-out (all three at REVIEW; architect + QA on the diff, which the coder authored), a <b>survival vote</b> — a concern stands unless refuted with evidence, and the counting is code — ≤3 rounds, then a human. Full per-phase mechanics one click below.</figcaption>
+          <figcaption><b>One change, one repository — the phase spine.</b> Pull entry via <span class="mono">next-story &lt;epic&gt;</span> → <span class="mono">jira-story &lt;story id&gt;</span>. <span class="tag tag-code">FINALIZE</span> is a code gate — no source before the spec is frozen; <span class="tag tag-human">HANDOFF</span> is shipped by devops, with a human approve forced by the computed blast radius (≥N consumers, or money / PII). <b>REVIEW</b> and <b>CHANGE REVIEW</b> run the same bounded engine — all three lenses at REVIEW; architect + QA on the diff, which the coder authored — mechanics below.</figcaption>
         </figure>
 
         <details class="impl">
@@ -331,11 +330,11 @@ next:
     <div class="twocol">
       <div class="card">
         <h3>A floor under detection</h3>
-        <p>The machine is good at refusing a bad concern, but nothing guarantees a real one gets raised — three lenses of one model share blind spots. So each lens returns an explicit <em class="em">pass / fail / concern</em> on every criterion (silence becomes impossible), a dedicated adversarial pass hunts security, money and PII, and QA is grounded in captured coverage output — recorded in the trail, hard-gated when a threshold is configured; on a repo with no coverage tooling the fallback is explicitly labelled a model assessment, never passed off as measurement.</p>
+        <ul><li>every lens returns an explicit <em class="em">pass / fail / concern</em> on every criterion — silence is impossible</li><li>a dedicated <b>adversarial pass</b> hunts security, money and PII</li><li>QA is grounded in <b>captured coverage output</b>; where no tooling exists the fallback is explicitly labelled a model assessment, never passed off as measurement</li></ul>
       </div>
       <div class="card">
         <h3>A trustworthy oracle</h3>
-        <p>Everything rests on the test suite, and the cheapest route to green is weakening the test. Two code-enforced fixes: every criterion maps to a test <em>before</em> implementation, and the test paths are <b>write-locked</b> for the run — the coder physically cannot edit them.</p>
+        <ul><li>every acceptance criterion maps to a test <em>before</em> implementation</li><li>test paths are <b>write-locked</b> for the run — the coder physically cannot edit them</li></ul>
       </div>
     </div>
 
@@ -344,8 +343,9 @@ next:
     <div class="subrules">
       <div class="subrule codeg"><h4>Filter · different role <span class="tag tag-code" style="font-size:9px;padding:.2em .4em">Harness</span></h4><p>The refuter is never the concern's own author.</p></div>
       <div class="subrule codeg"><h4>Filter · citation resolves <span class="tag tag-code" style="font-size:9px;padding:.2em .4em">Harness</span></h4><p>The refutation must cite its artifact, and code verifies the cited quote actually appears there. A refutation without one is discarded.</p></div>
-      <div class="subrule modelg"><h4>Adjudicator · is it sound? <span class="tag tag-model" style="font-size:9px;padding:.2em .4em">Model</span></h4><p>One stake-free role rules whether the reasoning holds and the cited line truly supports it, and the verdict is logged. It replaces an earlier character-count check that did not measure soundness.</p></div>
+      <div class="subrule modelg"><h4>Adjudicator · is it sound? <span class="tag tag-model" style="font-size:9px;padding:.2em .4em">Model</span></h4><p>One stake-free role rules whether the reasoning holds and the cited line truly supports it, and the verdict is logged.</p></div>
     </div>
-    <div class="note"><b>The loop is bounded and regression-guarded.</b> Surviving blockers route back for up to three rounds; the full suite re-runs each round; a blocker's identity is a hash of its mapped criterion, so “same blocker” is a deterministic comparison; if the count doesn't strictly fall, it escalates early rather than converging on something worse. After three rounds the loop stops and the run escalates to a person.</div>
+    <div class="flow"><span class="st">blocker survives</span><span class="arr">→</span><span class="st">route back · full suite re-runs</span><span class="arr">→</span><span class="st gate">count must strictly fall ▣</span><span class="arr">→</span><span class="st">≤ 3 rounds</span><span class="arr">→</span><span class="st hgate">else escalate ◆</span></div>
+    <p class="body">A blocker's identity is a hash of its mapped criterion — “same blocker” is a deterministic comparison.</p>
   </div>
 </section>

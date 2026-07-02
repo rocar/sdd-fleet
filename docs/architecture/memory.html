@@ -9,24 +9,13 @@ next:
   url: /provenance.html
   title: "Four ideas, one boundary"
 ---
-<section id="memory">
+<section id="memory" style="border-bottom:0">
   <div class="wrap">
     <div class="sec-head">
       <div class="sec-num">01</div>
       <div class="sec-title-wrap">
         <h2>Memory: a linked vault, not a curated store</h2>
-        <p class="sec-sub">The estate has to remember its plans, specs, decisions and lessons. The trap is letting a model curate that memory, because that puts non-determinism in the foundation the next spec builds on. The structure already chosen supplies the answer: one Obsidian vault with <b>two .sdd/ levels</b> — workspace plans above, each repo's specs and ADRs below — all plain markdown, so a human and Claude&nbsp;Code open the identical files.</p>
-      </div>
-    </div>
-    {% include boundary-strip.html %}
-    <div class="twocol">
-      <div class="rec card">
-        <h3>The record — authored markdown &amp; links <span class="tag tag-code" style="font-size:9px;padding:.2em .4em">Harness-disciplined</span></h3>
-        <p>Epic plans and contract designs in the <b>workspace .sdd/</b>; specs, acceptance and per-change ADRs in <b>each repo's own .sdd/</b>; cross-service lessons promoted up from repo to workspace level — all gated, git-versioned, changed only through review. Documents correlate through links <em class="em">written into</em> the markdown, and because the repos are submodules of the one vault, those links cross repo boundaries. Each link is part of the record: reviewed in the PR, diffable, as auditable as the prose around it.</p>
-      </div>
-      <div class="idx card">
-        <h3>The index — derived backlinks &amp; graph <span class="tag tag-code" style="font-size:9px;padding:.2em .4em">Derived · deterministic</span></h3>
-        <p>Obsidian builds the backlink pane and the graph view <b>from those authored links</b> — nothing hand-kept, and it regenerates exactly from the record. Claude&nbsp;Code recovers the same neighbourhood by reading the links directly. Navigation is bidirectional, spans the whole workspace, and is a projection of recorded fact — never a model&#39;s recollection.</p>
+        <p class="sec-sub">The trap is letting a model curate memory — that puts non-determinism in the foundation the next spec builds on. Instead: one Obsidian vault with <b>two .sdd/ levels</b> — workspace plans above, each repo's specs and ADRs below — all plain markdown, so a human and Claude&nbsp;Code open the identical files.</p>
       </div>
     </div>
     <pre class="code"><span class="c"># workspace/  — ONE Obsidian vault; member repos are git submodules (pinned SHAs)</span>
@@ -34,19 +23,6 @@ next:
 <span class="c">#   authoriser/ .sdd/   ← REPO level · spec.md · acceptance.md · ADR-217.md</span>
 <span class="c"># authoriser/.sdd/spec.md:  Implements </span><span class="s">[PAY-1843]</span><span class="c"> · </span><span class="s">payments.authorise@3.3.0</span><span class="c"> · </span><span class="s">[acceptance](./acceptance.md)</span>
 <span class="c"># backlinks are computed from these forward links — never written by hand</span></pre>
-    <div class="note"><b>Memory stays out of the model's hands.</b> The vault is plain, diffable, git-versioned markdown that a human and Claude&nbsp;Code read identically; no model curates it, and a semantic index may sit on top for discovery but never feeds a gate.</div>
-  </div>
-</section>
-
-<section id="links-mechanic" style="border-bottom:0">
-  <div class="wrap">
-    <div class="sec-head">
-      <div class="sec-num">02</div>
-      <div class="sec-title-wrap">
-        <h2>The mechanic, borrowed from Obsidian</h2>
-        <p class="sec-sub">In Obsidian, you author <b>forward links</b> in your notes; the <b>backlink pane and the graph view are derived</b> — computed from those authored links, never hand-kept. The record is what you wrote; the index is a projection of it.</p>
-      </div>
-    </div>
 
     <figure>
       <div class="fwrap">
@@ -71,12 +47,12 @@ next:
           <text class="sub" x="740" y="92">never curate it</text>
         </svg>
       </div>
-      <figcaption><b>Authored record, derived index.</b> The same split sdd-fleet draws everywhere: forward links are authored fact; backlinks and the graph are a deterministic projection that regenerates exactly.</figcaption>
+      <figcaption><b>Authored record, derived index.</b> The same split sdd-fleet draws everywhere: forward links are authored fact; backlinks and the graph are a deterministic projection that regenerates exactly. Because the repos are submodules of the one vault, links cross repo boundaries — each link is reviewed in the PR, diffable, as auditable as the prose around it.</figcaption>
     </figure>
 
     <div class="borrow">
       <span class="k">what sdd-fleet takes</span>
-      The vault is one Obsidian vault over the member repos, so memory is <b>plain-markdown forward links</b> — reviewed in the PR, diffable, as auditable as the prose around them — while the backlink graph is a <b>derived projection</b> a human and the agent recover identically. The discipline that falls out: <b>standard markdown links, no <span class="mono">[[wikilinks]]</span></b> (they die on GitHub and to the gate parsers), cross-tree refs by stable ID, and a semantic index may sit on top for discovery but <b>never feeds a gate</b>. Memory is authored, never model-curated. Where this idea sits among the other three pillars: <a href="../provenance.html">Four ideas, one boundary</a>.
+      The discipline that falls out: <b>standard markdown links, no <span class="mono">[[wikilinks]]</span></b> (they die on GitHub and to the gate parsers), cross-tree refs by stable ID, and a semantic index may sit on top for discovery but <b>never feeds a gate</b>. Memory is authored, never model-curated. Where this idea sits among the other three pillars: <a href="../provenance.html">Four ideas, one boundary</a>.
     </div>
   </div>
 </section>

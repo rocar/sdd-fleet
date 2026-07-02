@@ -12,28 +12,14 @@ next:
 <!-- 01 — the four pillars (provenance arc) -->
 <section id="pillars">
   <div class="wrap">
-    {% include boundary-strip.html %}
-    <p class="sec-sub" style="margin:18px 0 34px">sdd-fleet builds software from a spec across a regulated, multi-repo estate. Its design rule is short: every consequential step — a merge gate, a review verdict, a contract publish — is executed by reproducible code, never decided by a model. The model drafts and reviews inside that harness; a human signs off where the blast radius is high. None of the ideas underneath is new. This page traces where each of the four comes from, and what the design takes from each.</p>
     <div class="sec-head">
       <div class="sec-num">01</div>
       <div>
         <h2>Provenance — the four ideas we composed</h2>
-        <p class="sec-sub">The guarantee above isn't invented; it's assembled. Four existing ideas each draw one edge of the same boundary — answering <b>what is true</b>, <b>who holds the plan</b>, <b>what survives review</b>, and <b>how memory holds</b>. This is where each piece comes from.</p>
+        <p class="sec-sub">None of the ideas underneath is new. Four existing ideas each draw one edge of the same boundary — <b>what is true</b>, <b>who holds the plan</b>, <b>what survives review</b>, and <b>how memory holds</b>.</p>
       </div>
     </div>
 
-    <div class="pillars">
-      <div class="pill p1"><div class="k">Pillar 1 · what is true</div><h4>Spec-driven development</h4><p>The spec is the source of truth; code is a projection generated from it. Specify → Plan → Tasks → Implement.</p></div>
-      <div class="pill p2"><div class="k">Pillar 2 · who holds the plan</div><h4>Claude Code workflows</h4><p>Static primitives (commands · hooks · skills · agents) are the rails; dynamic workflows put the loop in code.</p></div>
-      <div class="pill p3"><div class="k">Pillar 3 · what survives</div><h4>Deep-research verify</h4><p>Fan out, let independent skeptics refute, and let a vote — not a model's whim — decide what stands.</p></div>
-      <div class="pill p4"><div class="k">Pillar 4 · how memory holds</div><h4>Obsidian's link model</h4><p>Authored forward links are the record; backlinks and the graph are a deterministic projection of them.</p></div>
-    </div>
-
-    <div class="legend" style="margin:8px 0 4px">
-      <span><i style="background:var(--code)"></i> Harness · code</span>
-      <span><i style="background:var(--model);border:1px dashed var(--model)"></i> Model</span>
-      <span><i style="background:var(--human)"></i> Human</span>
-    </div>
     <figure>
       <div class="fwrap">
         <svg viewBox="0 0 960 440" role="img" style="min-width:720px;width:100%" aria-label="Four ideas — spec-driven dev, Claude Code workflows, deep-research verify, and Obsidian links — converge to a central boundary box: A DETERMINISTIC HARNESS over PROBABILISTIC GENERATION. The boundary is then partitioned, with no arrowheads, into its three owners of consequence: Harness, Model, and Human.">
@@ -101,21 +87,9 @@ next:
         <p class="sec-sub">Spec-driven development (SDD) inverts the code-first model: <b>the specification, not the code, is the source of truth</b>. The spec is "executable" in that an agent generates the implementation from it, so code becomes a continuously regenerated projection of the spec rather than the primary artifact.</p>
       </div>
     </div>
-    <p class="body">GitHub's Spec Kit frames the canonical loop as <b>Specify → Plan → Tasks → Implement</b>, each phase emitting a Markdown artifact that feeds the next: <em>specify</em> captures the what-and-why (deferring the tech stack), <em>plan</em> commits the how, <em>tasks</em> slices it into small reviewable units, <em>implement</em> executes. It suits AI agents because models complete patterns but cannot mind-read — a structured spec supplies the shared context a vague prompt cannot.</p>
-
-    <div class="flow">
-      <span class="st">intent</span><span class="arr">→</span>
-      <span class="st">SPEC</span><span class="arr">→</span>
-      <span class="st">REVIEW</span><span class="arr">→</span>
-      <span class="st gate">FINALIZE ▣</span><span class="arr">→</span>
-      <span class="st">BUILD</span><span class="arr">→</span>
-      <span class="st">CHANGE_REVIEW</span><span class="arr">→</span>
-      <span class="st hgate">HANDOFF ◆</span>
-    </div>
-
     <div class="borrow">
       <span class="k">what sdd-fleet takes</span>
-      The phase spine above is SDD's <span class="mono">specify→plan→tasks→implement</span> hardened into a state machine. The vault <span class="mono">.sdd/</span> is the spec-as-source-of-truth: specs, acceptance, ADRs live there as the durable record; source is the projection. sdd-fleet adds what SDD leaves to convention: a <b>fail-closed gate</b> (▣) — the default is to block; opening takes an explicit, coded allow — at each transition: no source before <span class="mono">FINALIZED</span>, no handoff on a failing or untraceable suite. The transitions are enforced, not followed by habit.
+      The phase spine is SDD's <span class="mono">specify→plan→tasks→implement</span> hardened into a state machine. The vault <span class="mono">.sdd/</span> is the spec-as-source-of-truth: specs, acceptance, ADRs live there as the durable record; source is the projection. sdd-fleet adds what SDD leaves to convention: a <b>fail-closed gate</b> (▣) at each transition — the transitions are enforced, not followed by habit.
     </div>
   </div>
 </section>
@@ -128,27 +102,6 @@ next:
       <div>
         <h2>Claude Code workflows — <em>who holds the plan</em></h2>
         <p class="sec-sub">Claude Code offers two registers of control. The defining difference is <b>who holds the plan</b>: with static primitives the model orchestrates turn by turn; a dynamic workflow moves the loop into code.</p>
-      </div>
-    </div>
-
-    <div class="two">
-      <div class="panel code">
-        <h4><span class="tag tag-code">Static</span> the rails</h4>
-        <ul>
-          <li><b>fixed entry points</b> — work starts only where the system allows, never mid-stream (slash commands)</li>
-          <li><b>tool-level gates</b> that fail closed at the boundary — e.g. no source written before the spec is finalized (hooks)</li>
-          <li><b>the rulebook the model loads</b> — the protocol and the review rubric (skills)</li>
-          <li><b>the role lenses</b> — architect · coder · QA, plus the sole writer of record (subagents)</li>
-        </ul>
-      </div>
-      <div class="panel model">
-        <h4><span class="tag tag-model">Dynamic</span> the engines</h4>
-        <ul>
-          <li>model-authored <b>code</b> that an isolated runtime executes in the background</li>
-          <li>the <b>script</b> holds the loop, the branching, and the intermediate results — not the chat context</li>
-          <li>deterministic and re-runnable; only the work <em>inside</em> each model call is model-powered</li>
-          <li>purpose-built engines for <b>spec review, change review, and build</b></li>
-        </ul>
       </div>
     </div>
 
@@ -196,28 +149,9 @@ next:
       <figcaption><b>The shape both share.</b> An independent agent challenges another agent's output; code filters and counts the votes, with one neutral model adjudicator ruling on contested soundness inside the count. sdd-fleet's <a href="architecture/feature-machine.html">REVIEW and CHANGE_REVIEW</a> run this engine on a spec or a diff.</figcaption>
     </figure>
 
-    <div class="two">
-      <div class="panel model">
-        <h4>deep-research · skeptical of the <em>claims</em></h4>
-        <ul>
-          <li>a claim is <b>guilty until proven innocent</b></li>
-          <li>if a skeptic is uncertain it defaults to refuted; if all abstain, the claim is killed</li>
-          <li>goal: <b>precision</b> — keep only what verifies (protect the report from false claims)</li>
-        </ul>
-      </div>
-      <div class="panel code">
-        <h4>sdd-fleet · skeptical of the <em>work</em></h4>
-        <ul>
-          <li>a concern is <b>innocent until proven guilty</b></li>
-          <li>it <b>survives unless</b> refuted by a different role with a resolving citation, judged sound by one neutral adjudicator</li>
-          <li>goal: <b>recall</b> — a guaranteed floor on what gets caught (never miss a real defect)</li>
-        </ul>
-      </div>
-    </div>
-
     <div class="borrow">
       <span class="k">what sdd-fleet takes — and flips</span>
-      The machinery is identical — fan-out, adversarial challenge, code-level vote — but the burden of proof is inverted: a concern survives unless refuted with evidence. And here the vote carries a consequence. A surviving blocker blocks the merge; the loop is bounded to three rounds, and the blocker count must strictly fall or the run escalates to a human. Verification is used as a control gate rather than a quality filter.
+      The machinery is identical — fan-out, adversarial challenge, code-level vote — but the burden of proof is inverted: a concern survives unless refuted with evidence. And here the vote carries a consequence — a surviving blocker blocks the merge. Verification is used as a control gate rather than a quality filter.
     </div>
   </div>
 </section>
@@ -235,44 +169,10 @@ next:
   </div>
 </section>
 
-<!-- 06 — synthesis -->
-<section id="synthesis">
-  <div class="wrap">
-    <div class="sec-head">
-      <div class="sec-num">06</div>
-      <div>
-        <h2>The synthesis</h2>
-        <p class="sec-sub">Each pillar supplies one face of the same boundary. Together they make a system that is <b>auditable and replayable</b> end to end.</p>
-      </div>
-    </div>
-
-    <table class="prov">
-      <thead><tr><th>Pillar</th><th>Contributes</th><th>To the boundary</th></tr></thead>
-      <tbody>
-        <tr><td><b>Spec-driven</b></td><td>the spec as source of truth; the phase spine</td><td>fixes the <span class="tag tag-code">deterministic</span> record the model generates against</td></tr>
-        <tr><td><b>Claude Code workflows</b></td><td>static rails + dynamic engines; "plan in code"</td><td>makes every <em>consequence</em> code; only the <b>residue</b> — the judgment calls no rule can settle — is <span class="tag tag-model">model</span></td></tr>
-        <tr><td><b>Deep-research verify</b></td><td>fan-out → refute → vote (inverted default)</td><td>turns review into a fail-closed gate, escalating to the <span class="tag tag-human">human</span></td></tr>
-        <tr><td><b>Obsidian links</b></td><td>authored forward links; derived backlinks/graph</td><td>keeps memory a <span class="tag tag-code">deterministic</span> projection, never model-curated</td></tr>
-      </tbody>
-    </table>
-
-    <div class="pull">Each of the four ideas had already drawn one edge of this line. sdd-fleet assembles them into a single boundary: deterministic where it counts, model-judged at the residue, human-owned at the blast radius.</div>
-
-    <div class="note"><b>Operating tradeoffs.</b> The design optimises for audit and replay, not raw speed. The gates, the bounded review loop, and the per-criterion checks cost wall-clock time and tokens. The human gates concentrate load on a few approvers — epic and contract ratification, money and PII sign-off. Most engineering effort moves up-front, into the spec and its acceptance tests. In return, every change can be re-derived and defended after the fact.</div>
-
-    <div class="legend">
-      <span><i style="background:var(--code)"></i> Harness owns the consequence</span>
-      <span><i style="background:var(--model);border:1px dashed var(--model)"></i> Model judges the residue</span>
-      <span><i style="background:var(--human)"></i> Human owns the blast radius</span>
-    </div>
-
-    <div class="note"><b>Provenance.</b> The framings of <b>spec-driven development</b> and <b>Claude Code's static / dynamic workflows</b> are grounded in the primary sources below. The <b>verify pattern</b> is documented for Claude Code's dynamic workflows; the multi-vote, default-to-refuted specifics are sdd-fleet's own. The <b>Obsidian authored-vs-derived</b> model is adopted as a documented design principle (see this repo's <span class="mono">CLAUDE.md</span> and <a href="architecture/">the architecture pages</a>).</div>
-  </div>
-</section>
-
 <!-- sources — this page only -->
 <section id="sources" style="border-bottom:0">
   <div class="wrap">
+    <div class="note"><b>Provenance.</b> The framings of <b>spec-driven development</b> and <b>Claude Code's static / dynamic workflows</b> are grounded in the primary sources below. The <b>verify pattern</b> is documented for Claude Code's dynamic workflows; the multi-vote, default-to-refuted specifics are sdd-fleet's own. The <b>Obsidian authored-vs-derived</b> model is adopted as a documented design principle (see this repo's <span class="mono">CLAUDE.md</span> and <a href="architecture/">the architecture pages</a>).</div>
     <div class="note"><b>Sources (verified)</b>
       <div style="font-family:'JetBrains Mono',monospace;color:var(--ink-faint);font-size:11px;line-height:1.7;margin-top:8px">
         Spec Kit: github.com/github/spec-kit · spec-kit/spec-driven.md · github.github.com/spec-kit · github.blog "spec-driven development with AI" · developer.microsoft.com "spec-driven development &amp; Spec Kit".

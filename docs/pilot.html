@@ -9,7 +9,6 @@ prev:
 <!-- 01 — the pilot -->
 <section id="pilot">
   <div class="wrap">
-    {% include boundary-strip.html %}
     <div class="sec-head" style="margin-top:26px">
       <div class="sec-num">01</div>
       <div>
@@ -50,8 +49,6 @@ prev:
         </ul>
       </div>
     </div>
-
-    <div class="pull">A pilot is one epic across one or two repos, run end to end. It succeeds or fails on the audit trail it leaves — not on how fast it ran.</div>
   </div>
 </section>
 
@@ -71,29 +68,29 @@ prev:
         <h4>Cost shape per change</h4>
         <ul>
           <li>the gates, the bounded review rounds, and the per-criterion checks cost wall-clock time and tokens</li>
-          <li>the shape of that cost — how much is fixed overhead per change, how much scales with the number of acceptance criteria — is to be measured in the pilot, per change and per epic</li>
+          <li>how much is fixed overhead per change and how much scales with the number of acceptance criteria is measured in the pilot</li>
         </ul>
       </div>
       <div class="panel">
         <h4>Approver load</h4>
         <ul>
           <li>the human gates concentrate on a few people: epic and contract ratification, money-movement and PII sign-off, escalation resolution</li>
-          <li>how many gate events one epic actually generates — and whether they queue on a single approver — is a pilot measurement, not an estimate</li>
+          <li>how many gate events one epic generates — and whether they queue on one approver — is a pilot measurement, not an estimate</li>
         </ul>
       </div>
       <div class="panel">
         <h4>Failure modes</h4>
         <ul>
-          <li>a bug in the harness itself <b>fails closed</b> — work blocks rather than slipping through; the pilot has to confirm that in practice and define the break-glass path</li>
+          <li>a bug in the harness itself <b>fails closed</b> — work blocks rather than slipping through; the pilot defines the break-glass path</li>
           <li>a model outage parks work safely at the last gated state</li>
           <li>if an incident ships despite the gates, the replay trail is the investigation input — the gate set is then tuned, not trusted less</li>
         </ul>
       </div>
       <div class="panel">
-        <h4>Rollout alongside existing CI/CD</h4>
+        <h4>Platform support</h4>
         <ul>
-          <li>sdd-fleet's gates act in-session, before a merge; the bank's existing CI/CD stays authoritative after it</li>
-          <li>how the two overlap without double-gating or gaps is worked out on the pilot repos, not assumed in advance</li>
+          <li>the review and build engines run as Claude Code <b>dynamic workflows</b>; whether the company's Claude Code build enables that feature is confirmed before the pilot, not assumed</li>
+          <li>the Jira record plane needs API access from the run environment; whether the bank's Jira grants it — and under which auth — is settled on the pilot repos</li>
         </ul>
       </div>
     </div>
