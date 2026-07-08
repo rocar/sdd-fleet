@@ -224,11 +224,88 @@ next:
   </div>
 </section>
 
-<!-- 04 — the ladder, and what we don't know -->
-<section id="ladder" style="border-bottom:0">
+<!-- 04 — one team, one system -->
+<section id="seats">
   <div class="wrap">
     <div class="sec-head">
       <div class="sec-num">04</div>
+      <div class="sec-title-wrap">
+        <h2>One team, one system — <em>the seating when it gets real</em></h2>
+        <p class="sec-sub">The mapping above is fleet-scale — an estate of repos, many features in flight. Pressure-tested against one concrete build — rebuilding a bank’s payment switch from scratch — it consolidates, because a mapping of roles conflates <b>seats with duties</b>: regulation mandates named signatures and separations, not job titles. Five seats, six to eight people, each owning exactly one plane.</p>
+      </div>
+    </div>
+
+    <style>
+      .seats-tbl{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--card);margin:6px 0 4px}
+      .seats-tbl table{border-collapse:collapse;width:100%;min-width:940px}
+      .seats-tbl th{font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:12px 14px;border-bottom:1.5px solid var(--line-strong)}
+      .seats-tbl td{padding:13px 14px;border-bottom:1px solid var(--line);vertical-align:top;font-size:.92rem;line-height:1.55;color:var(--ink-soft)}
+      .seats-tbl tr:last-child td{border-bottom:0}
+      .seats-tbl td b{color:var(--ink);font-weight:600}
+      .seats-tbl .rn{font-family:"Space Grotesk",sans-serif;font-weight:600;color:var(--ink);white-space:nowrap}
+      .seats-tbl .rn .ct{font-family:"JetBrains Mono",monospace;font-size:10.5px;font-weight:500;color:var(--ink-faint)}
+      .seats-tbl .pl{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--ink);white-space:nowrap}
+      .seats-tbl .pl .g{display:block;font-size:10px;color:var(--ink-faint);margin-top:3px}
+      .seats-tbl .ar{font-size:.88rem;white-space:nowrap}
+    </style>
+
+    <div class="seats-tbl" role="region" aria-label="The five seats and their planes" tabindex="0">
+      <table>
+        <thead>
+          <tr><th>Seat</th><th>Plane</th><th>Product</th><th>Archetype</th><th>Role description</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="rn">Product architect <span class="ct">×1</span></td>
+            <td class="pl">intent<span class="g">what should exist</span></td>
+            <td>the epic DAG · contract designs · acceptance criteria</td>
+            <td class="ar">Builder + Grower</td>
+            <td>Owns business intent and the contract set as <b>one artifact</b> — on a single system, the interfaces are the product. Proposes every ratification and never self-approves; resolves what the machines escalate; prototypes directly with agents instead of writing requirements for someone else to build.</td>
+          </tr>
+          <tr>
+            <td class="rn">Domain orchestrator <span class="ct">×2–3</span></td>
+            <td class="pl">delivery<span class="g">what gets built</span></td>
+            <td>working, reviewed slices — authorization · clearing &amp; settlement · connectors</td>
+            <td class="ar">Builder</td>
+            <td>A <b>domain expert who multiplies through agents</b>, not a generalist who context-switches. Runs several feature machines in parallel inside one slice, steers specs, judges what escalates — and owns the domain correctness no review lens can: reversals, timeouts, stand-in processing.</td>
+          </tr>
+          <tr>
+            <td class="rn">Controls engineer <span class="ct">×1</span></td>
+            <td class="pl">control<span class="g">what may pass</span></td>
+            <td>the harness — gates · hooks · workflows · the oracle · the shadow-diff engine</td>
+            <td class="ar">Maintainer + Sweeper</td>
+            <td>Builds the deterministic machinery as <b>tested production code</b>: the testability floor, criterion → test traceability, write-locked suites, the parallel-run diff. Owns the <b>CI half of DevOps</b> — gate stages, promotion criteria, artifact provenance — because the pipeline is where the gates physically run. What an auditor examines is this seat’s code.</td>
+          </tr>
+          <tr>
+            <td class="rn">Reliability engineer <span class="ct">×1</span></td>
+            <td class="pl">runtime<span class="g">what keeps running</span></td>
+            <td>environments · observability · the traffic-mirror tap · replay-trail custody · the fleet’s own runtime</td>
+            <td class="ar">Maintainer</td>
+            <td>A <b>day-one seat, not a cutover hire</b>: the zoned landing zone, HSM connectivity, the shadow environment — production from its first mirrored packet — and custody of the replay evidence: durability, immutability, access. Owns the <b>CD half of DevOps</b> — deployment automation, infrastructure as code, the runners the pipeline runs on. Becomes the classic run-the-estate seat at go-live.</td>
+          </tr>
+          <tr>
+            <td class="rn">Trust engineer <span class="ct">×1</span></td>
+            <td class="pl">trust<span class="g">two pairs of hands</span></td>
+            <td>key material · PCI scope · the standing adversarial pass on money &amp; PII paths</td>
+            <td class="ar">outside the taxonomy</td>
+            <td>Owns the key ceremonies — a <b>dual-control, physically-human gate</b> no automation touches — and takes the trust residue of DevOps: secrets management, artifact signing, deploy credentials. A seat regulation carves out; the tool-builder taxonomy has no slot for it, which is itself a finding.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <figcaption><b>Held above the team:</b> the named accountable approver — a duty attached to the lead’s manager, not a seat; accountability and generate-vs-approve separation live in the <b>approval matrix, not the org chart</b>. The junior apprentice attaches to the controls seat — <a href="#ladder">the ladder below</a>.</figcaption>
+
+    <div class="note"><b>There is no DevOps seat.</b> The function splits along the plane boundary — <b>CI is control, CD is runtime, secrets are trust</b> — and the day-to-day pipeline toil is drafted by agents, reviewed by the seat that owns the plane. The seam between the halves is a <b>promotion signal</b>: evidence emitted by the control plane, consumed by the runtime plane — the same pattern as the replay trail, for the same reason: the interface between two owners is a machine-readable artifact, never a shared login. DevOps-as-culture survives; only the job title retires.</div>
+
+    <div class="pull">Two separations, two axes: <b>nobody approves what they generate</b> — architect ↔ approver — and <b>nobody operates what they change</b> — controls ↔ reliability. The seat that decides what may reach production holds no production access; the seat that touches production cannot alter the gates.</div>
+  </div>
+</section>
+
+<!-- 05 — the ladder, and what we don't know -->
+<section id="ladder" style="border-bottom:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">05</div>
       <div class="sec-title-wrap">
         <h2>The ladder — <em>and what only running it will teach</em></h2>
         <p class="sec-sub">When juniors no longer write most of the code, the promotion currency changes: <b>seniority becomes the blast radius you are trusted to approve.</b> Judgment scope replaces code volume.</p>
@@ -243,6 +320,7 @@ next:
           <li><b>spec &amp; acceptance authorship</b> — the testability floor is a teacher: a criterion that isn’t decidable is refused</li>
           <li><b>Sweeper work</b> — simplification, unshipping, optimization: the archetype with the gentlest blast radius</li>
           <li><b>escalation triage</b> — the queue of what the machine could not settle is a curriculum of exactly the judgment the ladder rewards</li>
+          <li><b>shadow-diff triage</b> — in a parallel run, every mismatch against the legacy system is a domain lesson at zero blast radius: the old system is still the one moving the money</li>
         </ul>
       </div>
       <div class="panel human">
@@ -261,7 +339,7 @@ next:
 <!-- sources — this page only -->
 <section id="sources" style="border-bottom:0;padding-top:0">
   <div class="wrap">
-    <div class="note"><b>Provenance.</b> This page’s claims were established the way the fleet establishes a fact: fan-out, independent skeptics prompted to refute, a vote — 22 claims confirmed, 3 refuted and excluded (July 2026). The role mapping in section 03 is this project’s own synthesis over those verified inputs; the composition itself is what the <a href="pilot.html">pilot</a> tests.</div>
+    <div class="note"><b>Provenance.</b> This page’s claims were established the way the fleet establishes a fact: fan-out, independent skeptics prompted to refute, a vote — 22 claims confirmed, 3 refuted and excluded (July 2026). The role mapping in section 03 — and its consolidation into five seats in section 04, pressure-tested on paper against a from-scratch payment-switch rebuild — is this project’s own synthesis over those verified inputs; the composition itself is what the <a href="pilot.html">pilot</a> tests.</div>
     <div class="note"><b>Sources (verified)</b>
       <div style="font-family:'JetBrains Mono',monospace;color:var(--ink-faint);font-size:11px;line-height:1.7;margin-top:8px">
         Archetypes &amp; operating model: x.com/bcherny (June 2026, mirrored on Threads) · Pragmatic Engineer “Building Claude Code” · Lenny’s Podcast.
