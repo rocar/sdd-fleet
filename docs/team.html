@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "What the team becomes"
-description: "How AI-agentic development reshapes the engineering team that runs the fleet — the verified evidence, the roles regulation locks in place, and a ladder where judgment scope replaces code volume."
+description: "How AI-agentic development reshapes the engineering team that runs the fleet — the evidence, and what the team looks like on a real build."
 prev:
   url: /provenance.html
   title: "Four ideas, one boundary"
@@ -15,12 +15,12 @@ next:
     <div class="sec-head" style="margin-top:26px">
       <div class="sec-num">01</div>
       <div class="sec-title-wrap">
-        <h2>The shift — <em>from implementer to orchestrator</em></h2>
-        <p class="sec-sub">If the fleet does the implementing, what is left for the people? The question now has evidence. Every claim on this page went through the same <a href="provenance.html#verify">adversarial verify pattern</a> the fleet itself uses — independent skeptics, a vote, refuted claims excluded — as of July 2026.</p>
+        <h2>The shift</h2>
+        <p class="sec-sub">If the fleet writes the code, what is left for the people?</p>
       </div>
     </div>
 
-    <p class="body">Boris Cherny, the creator of Claude Code, describes the traditional functions — engineering, product, design, data science — <b>“melting” into a single kind of role</b>, and names five archetypes he observes on his own team:</p>
+    <p class="body">Boris Cherny, who created Claude Code, says the old job functions — engineering, product, design, data science — are blurring into one kind of role. On his own team he sees five recurring patterns:</p>
 
     <div class="flow" style="margin:14px 0 4px">
       <span class="st">Prototyper</span><span class="arr">·</span>
@@ -29,209 +29,31 @@ next:
       <span class="st">Grower</span><span class="arr">·</span>
       <span class="st">Maintainer</span>
     </div>
-    <figcaption style="margin-top:8px">Ideation at volume · prototype to production · simplify, unship, optimize · iterate toward product-market fit · own the mature system at scale. These are <b>behaviors, not job titles</b> — his own caveat: one person typically spans two or three.</figcaption>
+    <figcaption style="margin-top:8px">Churn out ideas · turn a prototype into production · simplify and cut · grow product-market fit · keep a mature system healthy. These are <b>ways of working, not job titles</b> — one person usually covers two or three.</figcaption>
 
     <div class="brief-panel" style="margin-top:22px">
       <div class="bp">
         <div class="k">The delegation gap</div>
-        <p>Anthropic’s internal study of its own engineers — the most agent-forward team measured — found AI in roughly <b>60% of all work</b>, but only <b>0–20% of tasks fully delegable</b>. Supervision, validation, and judgment stay human; the archetypes above are shapes of judgment, not of typing.</p>
+        <p>At Anthropic — the most AI-forward team measured — engineers use AI in about <b>60% of their work</b>, but can fully hand a task to it only <b>0–20% of the time</b>. The judgment stays with people. These roles are about judgment, not typing.</p>
       </div>
       <div class="bp">
         <div class="k">The review economics</div>
-        <p>Reviewing every generated artifact at human speed <b>consumes the productivity gain</b> — telemetry across 10,000+ developers shows review time up 91% and change size up 154%. Blanket human review does not survive contact with a fleet; oversight has to become <b>tiered and escalation-based</b>.</p>
+        <p>If a person reviews every AI change at normal speed, the whole speed-up is eaten by review — data on 10,000+ developers shows review time up <b>91%</b> and changes up <b>154%</b>. So review can’t cover everything; it has to be <b>tiered</b>, with people looking only at what matters.</p>
       </div>
     </div>
 
-    <div class="pull">Both findings point the same way: the human seat moves from <b>writing the change</b> to <b>owning what may pass</b>. That is exactly why the fleet moves review into the machine — the survival vote — and reserves people for the ◆ gates.</div>
+    <div class="pull">Both point the same way: the human’s job moves from <b>writing the change</b> to <b>deciding what may pass</b>. That is why the fleet handles routine review itself and saves people for the gates that carry real risk (◆).</div>
   </div>
 </section>
 
-<!-- 02 — what regulation locks in place -->
-<section id="locked">
+<!-- 02 — the team -->
+<section id="seats">
   <div class="wrap">
     <div class="sec-head">
       <div class="sec-num">02</div>
       <div class="sec-title-wrap">
-        <h2>What regulation locks in place</h2>
-        <p class="sec-sub">In a bank, three constraints on the team are not a preference. Each survived verification independently — and each lands on a different owner of the <a href="boundary.html">boundary</a>.</p>
-      </div>
-    </div>
-
-    <div class="two" style="grid-template-columns:repeat(3,1fr)">
-      <div class="panel human">
-        <h4>Accountability cannot be delegated <span class="tag tag-human">Human</span></h4>
-        <ul>
-          <li>UK SM&amp;CR places accountability with <b>named senior managers</b> “regardless of automation degree” — the FCA’s line: <em>“I did not understand it” is not a defence</em></li>
-          <li>so the ◆ gates — epic and contract ratification, money / PII sign-off — carry a <b>named human signature</b>, at every level of automation</li>
-        </ul>
-      </div>
-      <div class="panel model">
-        <h4>Generation and approval must separate <span class="tag tag-model">Model</span></h4>
-        <ul>
-          <li>the agent that drafts a change is <b>structurally barred</b> from approving its own deployment — a maker/checker rule practitioners inside a regulated US issuer reached independently</li>
-          <li>in the fleet: the lenses are independent of the drafter, the vote is counted in code, and approval is a <b>distinct seat</b></li>
-        </ul>
-      </div>
-      <div class="panel code">
-        <h4>The gate itself must be computed <span class="tag tag-code">Harness</span></h4>
-        <ul>
-          <li>which changes get a human gate is decided by a <b>deterministic classification</b> — regulatory impact, customer proximity, reversibility, data sensitivity — not by the model’s mood</li>
-          <li>in the fleet: blast radius is computed from the derived catalog, and the computation — not an opinion — forces the ◆</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="pull">Three groups that never met — an academic oversight framework, a bank-consortium governance body, and a regulated issuer’s research team — drew the same line: <b>keep the orchestration deterministic, keep the human named, compute the gate.</b> It is the boundary this site opened with, arrived at from three directions.</div>
-
-    <div class="note"><b>The regulatory weather is live.</b> In April 2026 the US agencies revised the interagency model-risk guidance and <b>explicitly excluded</b> generative and agentic AI pending a request for information; the UK PRA keeps AI/ML within model-risk scope, though whether a coding <em>harness</em> counts as a “model” is interpretive. Which second-line validation seats are mandatory is jurisdiction-dependent and unsettled — the fleet designs for the stricter reading.</div>
-  </div>
-</section>
-
-<!-- 03 — the team around one fleet -->
-<section id="roles">
-  <div class="wrap">
-    <div class="sec-head">
-      <div class="sec-num">03</div>
-      <div class="sec-title-wrap">
-        <h2>The team around one fleet</h2>
-        <p class="sec-sub">Mapping the traditional seats onto the archetypes, under the one rule. The composition is this project’s own synthesis — each input verified, the mapping proposed, the pilot the test.</p>
-      </div>
-    </div>
-
-    <figure>
-      <div class="fwrap">
-        <svg viewBox="0 0 960 400" role="img" style="min-width:720px;width:100%" aria-label="The team positioned around one fleet. Top row, four human seats: the epic and contract planner who ratifies before fan-out, the money and PII approver, the escalation owner, and the orchestrating engineers who each shepherd several machines. Their signatures flow down into a wide harness band — phase gates, survival votes, blast radius, dispatch — which contains three per-repo feature machines where agents draft and lenses review. Below the band, two platform seats own the harness itself: the harness engineer and the oracle designer.">
-          <defs>
-            <marker id="tm-ah-h" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#B45309"/></marker>
-            <marker id="tm-ah-c" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0E7490"/></marker>
-          </defs>
-
-          <!-- top row · the human seats -->
-          <rect x="40" y="28" width="212" height="54" rx="8" class="n-human"/>
-          <text class="lbl" x="146" y="50" text-anchor="middle" fill="#824007">epic &amp; contract planner ◆</text>
-          <text class="sub" x="146" y="68" text-anchor="middle">ratifies before fan-out</text>
-
-          <rect x="272" y="28" width="200" height="54" rx="8" class="n-human"/>
-          <text class="lbl" x="372" y="50" text-anchor="middle" fill="#824007">money / PII approver ◆</text>
-          <text class="sub" x="372" y="68" text-anchor="middle">signs the forced gates</text>
-
-          <rect x="492" y="28" width="188" height="54" rx="8" class="n-human"/>
-          <text class="lbl" x="586" y="50" text-anchor="middle" fill="#824007">escalation owner ◆</text>
-          <text class="sub" x="586" y="68" text-anchor="middle">resolves non-convergence</text>
-
-          <rect x="700" y="28" width="220" height="54" rx="8" class="n-human"/>
-          <text class="lbl" x="810" y="50" text-anchor="middle" fill="#824007">orchestrating engineers</text>
-          <text class="sub" x="810" y="68" text-anchor="middle">one human · many machines</text>
-
-          <!-- signatures & steering flow down into the harness -->
-          <path d="M146,82 V146" stroke="#B45309" stroke-width="1.4" fill="none" stroke-dasharray="5 4" marker-end="url(#tm-ah-h)"/>
-          <path d="M372,82 V146" stroke="#B45309" stroke-width="1.4" fill="none" stroke-dasharray="5 4" marker-end="url(#tm-ah-h)"/>
-          <path d="M586,82 V146" stroke="#B45309" stroke-width="1.4" fill="none" stroke-dasharray="5 4" marker-end="url(#tm-ah-h)"/>
-          <path d="M810,82 V146" stroke="#B45309" stroke-width="1.4" fill="none" stroke-dasharray="5 4" marker-end="url(#tm-ah-h)"/>
-
-          <!-- the harness band with the fleet inside -->
-          <rect x="40" y="150" width="880" height="128" rx="10" class="n-code"/>
-          <text class="lbl" x="480" y="172" text-anchor="middle" fill="#0a4a5c">THE HARNESS ▣ — phase gates · survival votes · blast radius · dispatch</text>
-
-          <rect x="70" y="188" width="250" height="64" rx="7" class="n-model"/>
-          <text class="lbl" x="195" y="212" text-anchor="middle" fill="#3f4651">feature machine · repo A</text>
-          <text class="sub" x="195" y="230" text-anchor="middle">agents draft · lenses review</text>
-
-          <rect x="355" y="188" width="250" height="64" rx="7" class="n-model"/>
-          <text class="lbl" x="480" y="212" text-anchor="middle" fill="#3f4651">feature machine · repo B</text>
-          <text class="sub" x="480" y="230" text-anchor="middle">agents draft · lenses review</text>
-
-          <rect x="640" y="188" width="250" height="64" rx="7" class="n-model"/>
-          <text class="lbl" x="765" y="212" text-anchor="middle" fill="#3f4651">feature machine · repo C</text>
-          <text class="sub" x="765" y="230" text-anchor="middle">agents draft · lenses review</text>
-
-          <!-- bottom row · the platform seats own the harness itself -->
-          <path d="M315,326 V284" stroke="#0E7490" stroke-width="1.5" fill="none" marker-end="url(#tm-ah-c)"/>
-          <path d="M645,326 V284" stroke="#0E7490" stroke-width="1.5" fill="none" marker-end="url(#tm-ah-c)"/>
-
-          <rect x="190" y="330" width="250" height="54" rx="8" class="n-code"/>
-          <text class="lbl" x="315" y="352" text-anchor="middle" fill="#0a4a5c">harness engineer ▣</text>
-          <text class="sub" x="315" y="370" text-anchor="middle">gates, hooks, workflows — as code</text>
-
-          <rect x="520" y="330" width="250" height="54" rx="8" class="n-code"/>
-          <text class="lbl" x="645" y="352" text-anchor="middle" fill="#0a4a5c">oracle designer ▣</text>
-          <text class="sub" x="645" y="370" text-anchor="middle">testability floor · criterion → test</text>
-        </svg>
-      </div>
-      <figcaption><b>The team around one fleet.</b> Humans sit at the signatures ◆ and at the helm of many machines; a platform pair owns the harness itself ▣. The model layer carries <b>no headcount</b> — only logged roles inside the machines.</figcaption>
-    </figure>
-
-    <div class="two">
-      <div class="panel human">
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px">from architect + tech lead · grows</div>
-        <h4>Epic &amp; contract planner ◆</h4>
-        <ul>
-          <li>authors the dependency DAG and contract design at the workspace layer; ratifies before work spreads to the repos</li>
-          <li>resolves escalations the bounded loop surfaces</li>
-          <li>the highest-leverage seat — <b>blast radius concentrates here</b> (the Builder archetype, holding the plan)</li>
-        </ul>
-      </div>
-      <div class="panel">
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px">from senior engineer · transforms</div>
-        <h4>Orchestrating engineer</h4>
-        <ul>
-          <li>shepherds several per-repo feature machines in parallel — <b>context-switching displaces single-threaded deep work</b> as the core skill</li>
-          <li>reviews what escalates, not everything: the machine does first-pass quality control; the human takes the novel and boundary cases</li>
-        </ul>
-      </div>
-      <div class="panel code">
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px">new seat · platform</div>
-        <h4>Harness engineer ▣</h4>
-        <ul>
-          <li>owns the gates, hooks, workflows, and the conductor as <b>tested production code</b></li>
-          <li>in a bank this seat <b>is the control function</b> — audit and replay infrastructure is its product (the Maintainer archetype, pointed at the harness)</li>
-        </ul>
-      </div>
-      <div class="panel code">
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px">from qa · transforms</div>
-        <h4>Oracle designer ▣</h4>
-        <ul>
-          <li>stops executing tests and starts <b>designing what “pass” means</b>: adversarial scenarios, the testability floor, criterion→test traceability</li>
-          <li>the oracle’s execution is code — write-locked suites, captured coverage — so the human’s judgment goes where code can’t</li>
-        </ul>
-      </div>
-      <div class="panel human">
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px">from product owner · grows in authority</div>
-        <h4>Intent owner ◆</h4>
-        <ul>
-          <li>owns the Jira plane — intent, business value, sign-off — and the ◆ ratifications that regulation makes <b>human-owned by law, not preference</b></li>
-          <li>absorbs Prototyper work as drafting gets cheap: the person closest to intent can now show, not specify</li>
-        </ul>
-      </div>
-      <div class="panel">
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px">from sre · transforms</div>
-        <h4>Maintainer &amp; replay operator</h4>
-        <ul>
-          <li>runs the estate the fleet ships into — reliability, security, efficiency at scale</li>
-          <li>plus a duty that is new: <b>operating the record planes</b> — the replay trail is the investigation input when an incident ships despite the gates</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="note"><b>What shrinks.</b> The mid-level implementer seat shrinks most — feature implementation is the band the agents absorb, and one orchestrating engineer now carries what a small implementing team used to. The rung does not vanish; it re-enters through different work — the ladder below.</div>
-
-    <p class="body" style="margin-top:18px"><b>Mandatory by regulation, whatever the org chart says:</b></p>
-    <div class="flow">
-      <span class="st hgate">a named accountable approver ◆</span><span class="arr">·</span>
-      <span class="st hgate">an approver independent of any generating agent ◆</span><span class="arr">·</span>
-      <span class="st">second-line validation — jurisdiction-dependent</span>
-    </div>
-  </div>
-</section>
-
-<!-- 04 — one team, one system -->
-<section id="seats">
-  <div class="wrap">
-    <div class="sec-head">
-      <div class="sec-num">04</div>
-      <div class="sec-title-wrap">
-        <h2>One team, one system — <em>the seating when it gets real</em></h2>
-        <p class="sec-sub">The mapping above is fleet-scale — an estate of repos, many features in flight. Pressure-tested against one concrete build — rebuilding a bank’s payment switch from scratch — it consolidates, because a mapping of roles conflates <b>seats with duties</b>: regulation mandates named signatures and separations, not job titles. Five seats, six to eight people, each owning exactly one plane.</p>
+        <h2>The team</h2>
+        <p class="sec-sub">Take one hard case: rebuilding a bank’s payment switch from scratch. The old roles collapse into <b>five seats</b> — six to eight people, each owning one clear part of the system. (Regulation asks for named sign-offs and a few strict separations, not for particular job titles.)</p>
       </div>
     </div>
 
@@ -252,99 +74,60 @@ next:
     <div class="seats-tbl" role="region" aria-label="The five seats and their planes" tabindex="0">
       <table>
         <thead>
-          <tr><th>Seat</th><th>Plane</th><th>Product</th><th>Archetype</th><th>Role description</th></tr>
+          <tr><th>Seat</th><th>Owns</th><th>Its work</th><th>Archetype</th><th>What the role does</th></tr>
         </thead>
         <tbody>
           <tr>
             <td class="rn">Product architect <span class="ct">×1</span></td>
             <td class="pl">intent<span class="g">what should exist</span></td>
-            <td>the epic DAG · contract designs · acceptance criteria</td>
+            <td>the build plan · the contracts · acceptance criteria</td>
             <td class="ar">Builder + Grower</td>
-            <td>Owns business intent and the contract set as <b>one artifact</b> — on a single system, the interfaces are the product. Proposes every ratification and never self-approves; resolves what the machines escalate; prototypes directly with agents instead of writing requirements for someone else to build.</td>
+            <td>Owns what the system should do, and the contracts between its parts. Proposes each sign-off but <b>never signs off their own work</b>; settles the questions the machines escalate; builds prototypes directly with agents instead of writing specs for others.</td>
           </tr>
           <tr>
             <td class="rn">Domain orchestrator <span class="ct">×2–3</span></td>
             <td class="pl">delivery<span class="g">what gets built</span></td>
             <td>working, reviewed slices — authorization · clearing &amp; settlement · connectors</td>
             <td class="ar">Builder</td>
-            <td>A <b>domain expert who multiplies through agents</b>, not a generalist who context-switches. Runs several feature machines in parallel inside one slice, steers specs, judges what escalates — and owns the domain correctness no review lens can: reversals, timeouts, stand-in processing.</td>
+            <td>A <b>domain expert who scales through agents</b>, not a generalist juggling tasks. Runs several feature builds at once in one area, steers the specs, and judges the hard cases — the domain details no automated check catches: reversals, timeouts, stand-in processing.</td>
           </tr>
           <tr>
-            <td class="rn">Controls engineer <span class="ct">×1</span></td>
+            <td class="rn">Harness engineer <span class="ct">×1</span></td>
             <td class="pl">control<span class="g">what may pass</span></td>
-            <td>the harness — gates · hooks · workflows · the oracle · the shadow-diff engine</td>
+            <td>the gates, checks, and the shadow-diff engine</td>
             <td class="ar">Maintainer + Sweeper</td>
-            <td>Builds the deterministic machinery as <b>tested production code</b>: the testability floor, criterion → test traceability, write-locked suites, the parallel-run diff. Owns the <b>CI half of DevOps</b> — gate stages, promotion criteria, artifact provenance — because the pipeline is where the gates physically run. What an auditor examines is this seat’s code.</td>
+            <td>Builds the gates and checks as <b>real, tested code</b> — the test rules, requirement-to-test tracing, locked test suites, the parallel-run diff. Owns the <b>CI side of DevOps</b>: the build pipeline is where the gates actually run. An auditor’s questions land on this seat’s code.</td>
           </tr>
           <tr>
             <td class="rn">Reliability engineer <span class="ct">×1</span></td>
             <td class="pl">runtime<span class="g">what keeps running</span></td>
-            <td>environments · observability · the traffic-mirror tap · replay-trail custody · the fleet’s own runtime</td>
+            <td>environments · monitoring · the traffic mirror · the replay records</td>
             <td class="ar">Maintainer</td>
-            <td>A <b>day-one seat, not a cutover hire</b>: the zoned landing zone, HSM connectivity, the shadow environment — production from its first mirrored packet — and custody of the replay evidence: durability, immutability, access. Owns the <b>CD half of DevOps</b> — deployment automation, infrastructure as code, the runners the pipeline runs on. Becomes the classic run-the-estate seat at go-live.</td>
+            <td>Needed <b>from day one</b>, not just at launch: the environments, the secure HSM links, the shadow copy that runs live traffic, and safe-keeping of the replay records. Owns the <b>CD side of DevOps</b>: deployment, infrastructure-as-code, the machines the pipeline runs on. Becomes the classic keep-it-running role at go-live.</td>
           </tr>
           <tr>
             <td class="rn">Trust engineer <span class="ct">×1</span></td>
             <td class="pl">trust<span class="g">two pairs of hands</span></td>
-            <td>key material · PCI scope · the standing adversarial pass on money &amp; PII paths</td>
-            <td class="ar">outside the taxonomy</td>
-            <td>Owns the key ceremonies — a <b>dual-control, physically-human gate</b> no automation touches — and takes the trust residue of DevOps: secrets management, artifact signing, deploy credentials. A seat regulation carves out; the tool-builder taxonomy has no slot for it, which is itself a finding.</td>
+            <td>keys · PCI scope · the adversarial pass on money &amp; PII</td>
+            <td class="ar">Compilance</td>
+            <td>Runs the key ceremonies — a <b>two-person, in-the-room step</b> no automation may touch — plus secrets, code signing, and deploy credentials. Regulation forces this seat; the standard tech role list has no name for it, which is telling.</td>
           </tr>
         </tbody>
       </table>
     </div>
-    <figcaption><b>Held above the team:</b> the named accountable approver — a duty attached to the lead’s manager, not a seat; accountability and generate-vs-approve separation live in the <b>approval matrix, not the org chart</b>. The junior apprentice attaches to the controls seat — <a href="#ladder">the ladder below</a>.</figcaption>
 
-    <div class="note"><b>There is no DevOps seat.</b> The function splits along the plane boundary — <b>CI is control, CD is runtime, secrets are trust</b> — and the day-to-day pipeline toil is drafted by agents, reviewed by the seat that owns the plane. The seam between the halves is a <b>promotion signal</b>: evidence emitted by the control plane, consumed by the runtime plane — the same pattern as the replay trail, for the same reason: the interface between two owners is a machine-readable artifact, never a shared login. DevOps-as-culture survives; only the job title retires.</div>
-
-    <div class="pull">Two separations, two axes: <b>nobody approves what they generate</b> — architect ↔ approver — and <b>nobody operates what they change</b> — controls ↔ reliability. The seat that decides what may reach production holds no production access; the seat that touches production cannot alter the gates.</div>
-  </div>
-</section>
-
-<!-- 05 — the ladder, and what we don't know -->
-<section id="ladder" style="border-bottom:0">
-  <div class="wrap">
-    <div class="sec-head">
-      <div class="sec-num">05</div>
-      <div class="sec-title-wrap">
-        <h2>The ladder — <em>and what only running it will teach</em></h2>
-        <p class="sec-sub">When juniors no longer write most of the code, the promotion currency changes: <b>seniority becomes the blast radius you are trusted to approve.</b> Judgment scope replaces code volume.</p>
-      </div>
-    </div>
-
-    <div class="two">
-      <div class="panel">
-        <h4>Where a junior starts</h4>
-        <ul>
-          <li><b>review literacy</b> — reading the lens output, the vote record, the diff behind it</li>
-          <li><b>spec &amp; acceptance authorship</b> — the testability floor is a teacher: a criterion that isn’t decidable is refused</li>
-          <li><b>Sweeper work</b> — simplification, unshipping, optimization: the archetype with the gentlest blast radius</li>
-          <li><b>escalation triage</b> — the queue of what the machine could not settle is a curriculum of exactly the judgment the ladder rewards</li>
-          <li><b>shadow-diff triage</b> — in a parallel run, every mismatch against the legacy system is a domain lesson at zero blast radius: the old system is still the one moving the money</li>
-        </ul>
-      </div>
-      <div class="panel human">
-        <h4>Why this is a design input, not an accident</h4>
-        <ul>
-          <li>the fleet’s escalation queue and review record are its natural <b>apprenticeship surface</b> — every contested call is logged with its evidence and its outcome</li>
-          <li>a bank that staffs gates without growing gate-keepers ends with <b>seniors and no successors</b>; the pilot should measure junior seat-time at the record, not just approver load</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="note"><b>A candid list — what did not survive verification.</b> No production measurement from a bank’s agentic fleet survived the refute panel — the widely-cited “50% development-time reduction” claim failed 3–0, so this page carries <b>no productivity number</b>. The archetypes are a deliberately hedged observation (“what I <em>think</em> is five archetypes”), not an org chart — building job titles from them overreads the source. And whether Sweeper / spec / triage work is a <b>sufficient</b> apprenticeship for blast-radius judgment is an open question no confirmed source answers. These are things the pilot measures; we won’t invent them.</div>
+    <div class="pull">Two hard rules: <b>nobody approves their own work</b>, and <b>nobody runs what they can change</b>. The seat that decides what reaches production can’t touch production; the seat that runs production can’t change the gates.</div>
   </div>
 </section>
 
 <!-- sources — this page only -->
 <section id="sources" style="border-bottom:0;padding-top:0">
   <div class="wrap">
-    <div class="note"><b>Provenance.</b> This page’s claims were established the way the fleet establishes a fact: fan-out, independent skeptics prompted to refute, a vote — 22 claims confirmed, 3 refuted and excluded (July 2026). The role mapping in section 03 — and its consolidation into five seats in section 04, pressure-tested on paper against a from-scratch payment-switch rebuild — is this project’s own synthesis over those verified inputs; the composition itself is what the <a href="pilot.html">pilot</a> tests.</div>
     <div class="note"><b>Sources (verified)</b>
       <div style="font-family:'JetBrains Mono',monospace;color:var(--ink-faint);font-size:11px;line-height:1.7;margin-top:8px">
         Archetypes &amp; operating model: x.com/bcherny (June 2026, mirrored on Threads) · Pragmatic Engineer “Building Claude Code” · Lenny’s Podcast.
         Team topology &amp; delegation gap: Anthropic, 2026 Agentic Coding Trends Report (resources.anthropic.com).
-        Regulated-domain oversight: “Governed AI-Assisted Engineering” — arXiv 2606.22484 · Discover Financial Services multi-agent design — arXiv 2502.05439 · FINOS AI Governance Framework v2.0 — air-governance-framework.finos.org.
+        Regulated-domain oversight: “Governed AI-Assisted Engineering” — arXiv 2606.22484 · FINOS AI Governance Framework v2.0 — air-governance-framework.finos.org.
         Regulatory position: OCC Bulletin 2026-13 / interagency model-risk revision (April 2026) · UK PRA SS1/23 · UK SM&amp;CR via FINOS AIGF.
         Review economics telemetry: Faros AI 2025 (10,000+ developers).
       </div>
