@@ -78,35 +78,35 @@ next:
         </thead>
         <tbody>
           <tr>
-            <td class="rn">Product architect <span class="ct">×1</span></td>
+            <td class="rn">Product architect</td>
             <td class="pl">intent<span class="g">what should exist</span></td>
             <td>the build plan · the contracts · acceptance criteria</td>
             <td class="ar">Builder + Grower</td>
             <td>Owns what the system should do, and the contracts between its parts. Proposes each sign-off but <b>never signs off their own work</b>; settles the questions the machines escalate; builds prototypes directly with agents instead of writing specs for others.</td>
           </tr>
           <tr>
-            <td class="rn">Domain orchestrator <span class="ct">×2–3</span></td>
+            <td class="rn">Domain orchestrators</td>
             <td class="pl">delivery<span class="g">what gets built</span></td>
             <td>working, reviewed slices — authorization · clearing &amp; settlement · connectors</td>
             <td class="ar">Builder</td>
             <td>A <b>domain expert who scales through agents</b>, not a generalist juggling tasks. Runs several feature builds at once in one area, steers the specs, and judges the hard cases — the domain details no automated check catches: reversals, timeouts, stand-in processing.</td>
           </tr>
           <tr>
-            <td class="rn">Harness engineer <span class="ct">×1</span></td>
+            <td class="rn">Harness engineer</td>
             <td class="pl">control<span class="g">what may pass</span></td>
             <td>the gates, checks, and the shadow-diff engine</td>
             <td class="ar">Maintainer + Sweeper</td>
             <td>Builds the gates and checks as <b>real, tested code</b> — the test rules, requirement-to-test tracing, locked test suites, the parallel-run diff. Owns the <b>CI side of DevOps</b>: the build pipeline is where the gates actually run. An auditor’s questions land on this seat’s code.</td>
           </tr>
           <tr>
-            <td class="rn">Reliability engineer <span class="ct">×1</span></td>
+            <td class="rn">Reliability engineer</span></td>
             <td class="pl">runtime<span class="g">what keeps running</span></td>
             <td>environments · monitoring · the traffic mirror · the replay records</td>
             <td class="ar">Maintainer</td>
             <td>Needed <b>from day one</b>, not just at launch: the environments, the secure HSM links, the shadow copy that runs live traffic, and safe-keeping of the replay records. Owns the <b>CD side of DevOps</b>: deployment, infrastructure-as-code, the machines the pipeline runs on. Becomes the classic keep-it-running role at go-live.</td>
           </tr>
           <tr>
-            <td class="rn">Trust engineer <span class="ct">×1</span></td>
+            <td class="rn">Trust engineer</span></td>
             <td class="pl">trust<span class="g">two pairs of hands</span></td>
             <td>keys · PCI scope · the adversarial pass on money &amp; PII</td>
             <td class="ar">Compilance</td>
