@@ -1,37 +1,42 @@
 ---
 layout: default
 title: "Memory — the linked vault"
-description: "Plain-markdown memory across two .sdd/ levels: authored forward links are the record, backlinks and the graph are derived — never model-curated."
+description: "Plain-markdown memory: what specs, decisions, and lessons look like, how they link, how the record grows — and how it comes back."
 prev:
   url: /architecture/feature-machine.html
   title: "Layer 2 — inside one repository"
 next:
   url: /provenance.html
-  title: "Four ideas, one boundary"
+  title: "Three ideas, one boundary"
 ---
-<section id="memory" style="border-bottom:0">
+<!-- 01 — the thesis -->
+<section id="memory">
   <div class="wrap">
     <div class="sec-head">
       <div class="sec-num">01</div>
       <div class="sec-title-wrap">
-        <h2>Memory: a linked vault, not a curated store</h2>
-        <p class="sec-sub">The trap is letting a model curate memory — that puts non-determinism in the foundation the next spec builds on. Instead: one Obsidian vault with <b>two .sdd/ levels</b> — workspace plans above, each repo's specs and ADRs below — all plain markdown, so a human and Claude&nbsp;Code open the identical files.</p>
+        <h2>A linked vault, not a curated store</h2>
+        <p class="sec-sub">Don't let a model curate memory — that puts randomness under the next spec. Instead: one Obsidian vault of <b>plain markdown, two levels</b> — workspace plans above, each repo's specs below. A human and Claude&nbsp;Code open the same files.</p>
       </div>
     </div>
-    <pre class="code"><span class="c"># workspace/  — ONE Obsidian vault; member repos are git submodules (pinned SHAs)</span>
-<span class="c">#   .sdd/               ← WORKSPACE level · epic plan · contract design · lessons</span>
-<span class="c">#   authoriser/ .sdd/   ← REPO level · spec.md · acceptance.md · ADR-217.md</span>
-<span class="c"># authoriser/.sdd/spec.md:  Implements </span><span class="s">[PAY-1843]</span><span class="c"> · </span><span class="s">payments.authorise@3.3.0</span><span class="c"> · </span><span class="s">[acceptance](./acceptance.md)</span>
-<span class="c"># backlinks are computed from these forward links — never written by hand</span></pre>
+    <pre class="code"><span class="c">workspace/                        ← one vault; member repos are git submodules</span>
+<span class="c">├─ .sdd/                          ← workspace level · epic plan · contracts · lessons</span>
+<span class="c">└─ authoriser/                    ← a member repo</span>
+<span class="c">   └─ .sdd/</span>
+<span class="c">      └─ PAY-1843/                ← one folder per story</span>
+<span class="c">         ├─ spec.md               Implements </span><span class="s">[PAY-1843]</span><span class="c"> · </span><span class="s">payments.authorise@3.3.0</span>
+<span class="c">         ├─ acceptance.md         ← linked from spec.md as </span><span class="s">[acceptance](./acceptance.md)</span>
+<span class="c">         └─ DECISIONS.md          ← the append-only decision log</span>
+<span class="c"># backlinks are computed by the vault from these links — never written by hand, vault-only</span></pre>
 
     <figure>
       <div class="fwrap">
-        <svg viewBox="0 0 900 150" style="min-width:680px;width:100%" role="img" aria-label="Forward links authored in documents are the record — reviewed, diffable, in the PR. Backlinks and the graph view are a deterministic projection derived from them, regenerating exactly. A margin note states the rule: the model may read the index, never curate it.">
+        <svg viewBox="0 0 900 150" style="min-width:680px;width:100%" role="img" aria-label="Forward links written in documents are the record — reviewed, diffable, in the PR. Backlinks and the graph view are computed from them and regenerate exactly. A margin note states the rule: the model may read the index, never curate it.">
           <defs>
             <marker id="ob-ah" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#4C515C"/></marker>
           </defs>
           <rect x="20" y="30" width="300" height="90" rx="9" class="n"/>
-          <text class="lbl" x="170" y="52" text-anchor="middle">authored forward links</text>
+          <text class="lbl" x="170" y="52" text-anchor="middle">written forward links</text>
           <text class="sub" x="170" y="70" text-anchor="middle">spec.md → [acceptance](./acceptance.md)</text>
           <text class="sub" x="170" y="86" text-anchor="middle">epic → [PAY-1843] · contract@3.3.0</text>
           <text class="sub" x="170" y="104" text-anchor="middle" fill="#0a4a5c">the RECORD — reviewed, diffable, in the PR</text>
@@ -40,19 +45,201 @@ next:
           <rect x="422" y="30" width="300" height="90" rx="9" class="n-code"/>
           <text class="lbl" x="572" y="52" text-anchor="middle" fill="#0a4a5c">backlinks · graph</text>
           <text class="sub" x="572" y="70" text-anchor="middle">who links here? · the neighbourhood</text>
-          <text class="sub" x="572" y="86" text-anchor="middle">regenerates exactly from the record</text>
-          <text class="sub" x="572" y="104" text-anchor="middle" fill="#0a4a5c">the INDEX — never authored by hand</text>
+          <text class="sub" x="572" y="86" text-anchor="middle">recomputed exactly from the record</text>
+          <text class="sub" x="572" y="104" text-anchor="middle" fill="#0a4a5c">the INDEX — never written by hand</text>
           <text class="sub" x="740" y="64">model may</text>
           <text class="sub" x="740" y="78">read it,</text>
           <text class="sub" x="740" y="92">never curate it</text>
         </svg>
       </div>
-      <figcaption><b>Authored record, derived index.</b> The same split sdd-fleet draws everywhere: forward links are authored fact; backlinks and the graph are a deterministic projection that regenerates exactly. Because the repos are submodules of the one vault, links cross repo boundaries — each link is reviewed in the PR, diffable, as auditable as the prose around it.</figcaption>
+      <figcaption><b>Written record, computed index.</b> Forward links are written by hand and reviewed in the PR. Backlinks and the graph are computed from them — for humans, inside the vault only. In a repo's PR view only the forward links exist, and <b>no gate reads the index</b>.</figcaption>
     </figure>
 
     <div class="borrow">
-      <span class="k">what sdd-fleet takes</span>
-      The discipline that falls out: <b>standard markdown links, no <span class="mono">[[wikilinks]]</span></b> (they die on GitHub and to the gate parsers), cross-tree refs by stable ID, and a semantic index may sit on top for discovery but <b>never feeds a gate</b>. Memory is authored, never model-curated. Where this idea sits among the other three pillars: <a href="../provenance.html">Four ideas, one boundary</a>.
+      <span class="k">the rules</span>
+      Standard markdown links only — <b>no <span class="mono">[[wikilinks]]</span></b> (they break on GitHub and to the gates). Cross-repo references use stable IDs. A search index may sit on top for discovery but <b>never feeds a gate</b>. These rules are borrowed from Obsidian's link model; the rest of the design's lineage: <a href="../provenance.html">Three ideas, one boundary</a>.
     </div>
+  </div>
+</section>
+
+<!-- 02 — the three documents -->
+<section id="artifacts">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">02</div>
+      <div class="sec-title-wrap">
+        <h2>The three documents</h2>
+        <p class="sec-sub">Specs, decisions, lessons. The structure is not a convention: specs are <b>checked on every write</b>, decision logs are <b>append-only</b>, and a lesson needs <b>a human</b> to get in.</p>
+      </div>
+    </div>
+
+    <p class="body"><b>The spec.</b> One per feature. A <span class="mono">STATUS</span> line plus eight fixed sections — a write missing any of them is <b>rejected by a hook</b>. The hook checks structure only; whether the content is good is what review is for.</p>
+    <pre class="code"><span class="c"># repo/.sdd/PAY-1843/spec.md</span>
+<span class="k">STATUS:</span> <span class="v">DRAFT</span>            <span class="c">DRAFT → IN_REVIEW → FINALIZED</span>
+<span class="c"># Instant payout endpoint</span>
+<span class="k">## Overview</span>              <span class="c">the problem, the user, why now</span>
+<span class="k">## Goals</span>                 <span class="c">outcomes, not implementation</span>
+<span class="k">## Non-goals</span>             <span class="c">what's out of scope — an empty one is a [blocker]</span>
+<span class="k">## Behavior</span>              <span class="c">concrete enough to build from without guessing</span>
+<span class="k">## Interfaces / Contracts</span>  <span class="c">API shapes · schemas · error envelopes</span>
+<span class="k">## Constraints</span>           <span class="c">performance · security · regulatory</span>
+<span class="k">## Risks</span>                 <span class="c">naming one is not a failure; hiding one is</span>
+<span class="k">## Acceptance Criteria</span>   <span class="c">See </span><span class="s">[acceptance.md](./acceptance.md)</span></pre>
+
+    <p class="body" style="margin-top:22px"><b>The decision (ADR).</b> Every decision that survives review gets an entry. Entries are <b>never edited</b> — to change course, add a new one that supersedes the old. A decision made silently isn't a decision yet.</p>
+    <pre class="code"><span class="c"># repo/.sdd/PAY-1843/DECISIONS.md — append-only</span>
+<span class="k">## ADR-7: Route step-up auth through the existing risk engine</span>
+- <span class="k">Date:</span> <span class="v">2026-07-04</span>
+- <span class="k">Status:</span> <span class="v">accepted</span>          <span class="c">or: superseded by ADR-9 · deprecated</span>
+<span class="c">Context · Decision · Consequences — a few lines each.</span>
+<span class="c"># product-wide decisions live in .sdd/_product/DECISIONS.md — cited as "product ADR-3"</span></pre>
+
+    <p class="body" style="margin-top:22px"><b>The lesson.</b> A finding that matters beyond its repo. A <b>human promotes it</b> up to the workspace; the model can propose, never promote.</p>
+    <pre class="code"><span class="c"># workspace/.sdd/_epic/lessons/idempotency-keys.md — promoted by a human ◆</span>
+Consumers retry on gateway timeout. Every money-movement endpoint needs an
+idempotency key <span class="k">in the contract</span>, not in the implementation.
+<span class="k">Evidence:</span> <span class="s">[PAY-1843]</span> · <span class="s">payments.authorise@3.3.0</span></pre>
+  </div>
+</section>
+
+<!-- 03 — the links -->
+<section id="links">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">03</div>
+      <div class="sec-title-wrap">
+        <h2>How they link</h2>
+        <p class="sec-sub">Four kinds of link. A hook checks every write against them.</p>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="panel">
+        <h4>Inside a feature — relative</h4>
+        <ul>
+          <li><span class="mono">[acceptance](./acceptance.md)</span></li>
+          <li>same folder, so the link moves with the feature</li>
+        </ul>
+      </div>
+      <div class="panel code">
+        <h4>Across repos — stable ID</h4>
+        <ul>
+          <li><span class="mono">[PAY-1843]</span> · <span class="mono">payments.authorise@3.3.0</span></li>
+          <li>never <span class="mono">../../</span> — it works in the vault but breaks in the repo's PR view; an ID works anywhere</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Between decisions — supersession</h4>
+        <ul>
+          <li><span class="mono">Status: superseded by ADR-9</span></li>
+          <li>old entries never change — the chain is the history</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Between scopes — qualified</h4>
+        <ul>
+          <li><span class="mono">product ADR-3</span></li>
+          <li>keeps feature and product numbering apart</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="note"><b>Adopting an existing repo?</b> A one-time sweep runs every <span class="mono">.sdd/</span> file through the same rules and lists what the gate would block — fix the list, re-run until clean.</div>
+  </div>
+</section>
+
+<!-- 04 — grows and comes back -->
+<section id="accumulate">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">04</div>
+      <div class="sec-title-wrap">
+        <h2>How it grows — and comes back</h2>
+        <p class="sec-sub"><span class="mono">.sdd/</span> is committed to git, so the record grows on its own: one folder per feature, decisions append-only. The hard part is the way back — getting what accumulated in front of the model again. Today <b>exactly one return path is automated</b>.</p>
+      </div>
+    </div>
+
+    <figure>
+      <div class="fwrap">
+        <svg viewBox="0 0 960 330" role="img" style="min-width:760px;width:100%" aria-label="Per-feature folders accumulate on the left, one per feature, committed to git. Two flows leave them. Upward: a lesson is promoted to the workspace lessons folder by a human — but from there no automated path leads back into the next feature; that edge is marked open. Rightward: the product tier is distilled by a script into a block in the root CLAUDE.md, which is loaded into every session — the one automated return path.">
+          <defs>
+            <marker id="mm-ah" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#4C515C"/></marker>
+            <marker id="mm-ah-h" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#B45309"/></marker>
+            <marker id="mm-ah-c" markerWidth="8" markerHeight="8" refX="6.2" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0E7490"/></marker>
+          </defs>
+
+          <!-- the feature folders -->
+          <rect x="30" y="56" width="250" height="48" rx="8" class="n"/>
+          <text class="lbl" x="155" y="76" text-anchor="middle">.sdd/PAY-1843/</text>
+          <text class="sub" x="155" y="93" text-anchor="middle">spec · decisions · reviews</text>
+          <rect x="30" y="114" width="250" height="48" rx="8" class="n"/>
+          <text class="lbl" x="155" y="134" text-anchor="middle">.sdd/PAY-1902/</text>
+          <text class="sub" x="155" y="151" text-anchor="middle">spec · decisions · reviews</text>
+          <rect x="30" y="172" width="250" height="48" rx="8" class="n"/>
+          <text class="lbl" x="155" y="192" text-anchor="middle">.sdd/&lt;next&gt;/</text>
+          <text class="sub" x="155" y="209" text-anchor="middle">one folder per feature</text>
+          <text class="sub" x="155" y="248" text-anchor="middle" fill="#0a4a5c">committed to git — grows, append-only</text>
+
+          <!-- lessons: up by human, no way back yet -->
+          <path d="M280,80 H388" stroke="#B45309" stroke-width="1.5" fill="none" stroke-dasharray="5 4" marker-end="url(#mm-ah-h)"/>
+          <text class="sub" x="334" y="70" text-anchor="middle" fill="#824007">promote ◆ human</text>
+          <rect x="390" y="52" width="270" height="56" rx="8" class="n-human"/>
+          <text class="lbl" x="525" y="74" text-anchor="middle" fill="#824007">workspace/.sdd/_epic/lessons/</text>
+          <text class="sub" x="525" y="92" text-anchor="middle">cross-service lessons</text>
+          <path d="M390,94 C330,120 300,120 284,116" stroke="#AEB6C0" stroke-width="1.4" fill="none" stroke-dasharray="2 5"/>
+          <text class="sub" x="392" y="130" text-anchor="middle">way back? — none yet (§05)</text>
+
+          <!-- product tier → CLAUDE.md -->
+          <rect x="390" y="180" width="270" height="56" rx="8" class="n"/>
+          <text class="lbl" x="525" y="202" text-anchor="middle">.sdd/_product/</text>
+          <text class="sub" x="525" y="220" text-anchor="middle">vision · stack · product decisions</text>
+          <path d="M660,208 H716" stroke="#0E7490" stroke-width="1.6" fill="none" marker-end="url(#mm-ah-c)"/>
+          <text class="sub" x="688" y="198" text-anchor="middle" fill="#0a4a5c">distil ▣</text>
+          <rect x="718" y="180" width="212" height="56" rx="8" class="n-code"/>
+          <text class="lbl" x="824" y="202" text-anchor="middle" fill="#0a4a5c">CLAUDE.md block</text>
+          <text class="sub" x="824" y="220" text-anchor="middle">in context, every session</text>
+
+          <!-- the one closed loop -->
+          <path d="M824,236 V292 H155 V224" stroke="#0E7490" stroke-width="1.5" fill="none" stroke-dasharray="6 4" marker-end="url(#mm-ah-c)"/>
+          <text class="sub" x="500" y="308" text-anchor="middle" fill="#0a4a5c">the one automated return path — back in front of the model at the next feature</text>
+        </svg>
+      </div>
+      <figcaption><b>Two flows up, one flow back.</b> Lessons go up by human approval ◆. The product tier is distilled ▣ by a script into a block in <span class="mono">CLAUDE.md</span> — regenerated between markers, never written by the model, only settled facts. Lessons have no equivalent yet — the grey edge is deliberately unfinished.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- 05 — retrieval -->
+<section id="retrieval" style="border-bottom:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">05</div>
+      <div class="sec-title-wrap">
+        <h2>Finding things when the vault grows</h2>
+        <p class="sec-sub">A hundred features in: a hundred folders, hundreds of decisions. Nobody reads everything. What gets memory back out — honestly.</p>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="panel code">
+        <h4>What works today</h4>
+        <ul>
+          <li><b>the CLAUDE.md block</b> — small, always loaded, only settled facts</li>
+          <li><b>grep by stable ID</b> — every cross-repo reference is exact-match findable</li>
+          <li><b>the vault graph</b> — for humans browsing a neighbourhood</li>
+          <li><b>a search index</b> — allowed for discovery, not built, never a gate</li>
+        </ul>
+      </div>
+      <div class="panel human">
+        <h4>Still open</h4>
+        <ul>
+          <li>nothing forces reading <span class="mono">lessons/</span> when a new spec is written — lessons go up, but nothing brings them back</li>
+          <li>product decisions grow forever, and every feature inherits them all — at some size that needs its own digest</li>
+          <li>no way to know <b>which old decision matters to a new spec</b> — today, a person remembers</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="note"><b>Gaps in the protocol, not the tooling.</b> Each has an obvious fix — a spec scaffold that cites the lessons it read, a digest of product decisions, a search index that suggests but never gates. Until built, they are stated limits, not hidden ones.</div>
   </div>
 </section>
