@@ -1013,6 +1013,12 @@ The end-to-end smoke walkthrough for the bug lane lives at
 (invoked by `run-tests.sh`), and `WALKTHROUGH.md` drives the LLM-dependent
 parts interactively with `claude --plugin-dir .`.
 
+
+To run document page locally
+```bash
+cd docs/
+PATH=/opt/homebrew/opt/ruby/bin:$PATH bundle exec jekyll serve --host 0.0.0.0 --port 4000
+```
 ---
 
 ## License
