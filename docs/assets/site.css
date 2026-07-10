@@ -139,13 +139,10 @@ h1 .b2{color:var(--ink-faint)}
 .bp p b{color:var(--ink);font-weight:600}
 .bp.human{border-left:3px solid var(--human)} .bp.human .k{color:var(--human)}
 .bp.model{border-left:3px solid var(--model)}
-details.impl{margin:18px 0 6px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--card);overflow:hidden}
-details.impl>summary{cursor:pointer;list-style:none;padding:14px 18px;font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:1rem;color:var(--ink);display:flex;align-items:center;gap:10px}
-details.impl>summary::-webkit-details-marker{display:none}
-details.impl>summary::before{content:"▸";color:var(--ink-faint);font-size:.9em}
-details.impl[open]>summary::before{content:"▾"}
-details.impl>summary .imp-tag{font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);border:1px solid var(--line-strong);border-radius:5px;padding:.2em .5em;margin-left:auto}
-details.impl .impl-body{padding:0 18px 18px}
+.impl{margin:18px 0 6px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--card);overflow:hidden}
+.impl>.impl-head{padding:14px 18px;font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:1rem;color:var(--ink);display:flex;align-items:center;gap:10px}
+.impl>.impl-head .imp-tag{font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);border:1px solid var(--line-strong);border-radius:5px;padding:.2em .5em;margin-left:auto}
+.impl .impl-body{padding:0 18px 18px}
 
 /* =====================================================
    SECTIONS

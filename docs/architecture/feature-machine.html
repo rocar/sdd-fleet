@@ -44,8 +44,8 @@ next:
           <figcaption><b>One change, one repository — the phase spine.</b> Pull entry via <span class="mono">next-story &lt;epic&gt;</span> → <span class="mono">jira-story &lt;story id&gt;</span>. <span class="tag tag-code">FINALIZE</span> is a code gate — no source before the spec is frozen; <span class="tag tag-human">HANDOFF</span> is shipped by devops, with a human approve forced by the computed blast radius (≥N consumers, or money / PII). <b>REVIEW</b> and <b>CHANGE REVIEW</b> run the same bounded engine — all three lenses at REVIEW; architect + QA on the diff, which the coder authored — mechanics below.</figcaption>
         </figure>
 
-        <details class="impl">
-          <summary>The four phases, fully expanded <span class="imp-tag">for implementers</span></summary>
+        <div class="impl">
+          <div class="impl-head">The four phases, fully expanded <span class="imp-tag">for implementers</span></div>
           <div class="impl-body">
         <figure class="fd-fig">
       <div class="fd-wrap">
@@ -305,7 +305,7 @@ next:
       <figcaption>Each band expands a phase into its internal work, tagged with the <b>sdd-fleet command</b> that drives it — <span class="mono">jira-story</span> (intake), <span class="mono">feature-dev</span> (SPEC finalize + REVIEW + BUILD), <span class="mono">pr-review</span> (CHANGE REVIEW + the gated HANDOFF flip). CHANGE REVIEW adds a <b>counterfactual</b> — does the suite fail if the change is reverted? Surviving blockers route back for re-draft or re-implement, bounded to three rounds then a human. Colour marks who decides; every phase syncs status to Jira.</figcaption>
     </figure>
           </div>
-        </details>
+        </div>
 
 
     <div class="lenses">
